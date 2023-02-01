@@ -73,6 +73,7 @@ common_closure_opts = [
     '--jscomp_off=deprecated',
     # Turn off complaints like:
     #   "Built-in 'Reflect.setPrototypeOf' not supported in output version es3."
+    '--jscomp_off=strictMissingProperties',
     '--jscomp_off=missingPolyfill',
     '--extra_annotation_name=listens',
     '--extra_annotation_name=exportDoc',
