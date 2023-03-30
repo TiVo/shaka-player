@@ -59,16 +59,11 @@ jobs:
           tar xf demo-modules.tar
           rm demo-modules.tar
           
-      - name: Packages the final demo app
-        shell: bash
-        run: |
-          tar cvf demo-app.tar .
-          
       - name: Temporarily save demo app tar
         uses: actions/upload-artifact@v2
         with:
           name: demo-app
-          path: ./demo-app.tar
+          path: ./
           retention-days: 1
 
   deploy:
@@ -84,13 +79,11 @@ jobs:
         uses: actions/download-artifact@v2
         with:
           name: demo-app
-          path: ./demo-app.tar
+          path: ./demo-app
 
-      - name: Create demo folder
+      - name: Rename with release
         shell: bash
         run: |
-          mkdir demo-app
-          tar xvf demo-app.tar -C demo-app
           VERSION=$(cat demo-app/demo-version)
           mv demo-app $(cat demo-app/$VERSION)
   
@@ -116,3 +109,12 @@ jobs:
           <hr>
           </body>
           </html>" >> index.html
+  
+      - name: Commit files
+        shell: bash
+        run: |
+          git config --global user.name "Demo App Deployer"
+          git config --global user.email "username@users.noreply.github.com"
+          git commit -a -m "Deploy demo app"
+          git push
+
