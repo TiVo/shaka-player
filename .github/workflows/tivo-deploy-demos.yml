@@ -84,7 +84,7 @@ jobs:
       - name: Remove .gitignore
         shell: bash
         run: |
-          rm $(cat demo-app/demo-version)/.gitignore
+          rm demo-app/.gitignore
   
       - name: Rename with release
         shell: bash
