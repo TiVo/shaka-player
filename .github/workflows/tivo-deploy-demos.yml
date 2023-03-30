@@ -84,8 +84,7 @@ jobs:
       - name: Rename with release
         shell: bash
         run: |
-          VERSION=$(cat demo-app/demo-version)
-          mv demo-app $(cat demo-app/$VERSION)
+          mv demo-app $(cat demo-app/demo-version)
   
       - name: Create demo index
         shell: bash
