@@ -49,7 +49,7 @@ jobs:
       - name: Tag the Player version
         shell: bash
         run: |
-          DEMO_VERSION="$(cat demo-version)-uncompiled"
+          DEMO_VERSION="$(git rev-parse --abbrev-ref HEAD)-(git rev-parse --short HEAD)-uncompiled"
           sed \
               -i lib/player.js \
               -e "s/\(shaka.Player.version\) = .*/\1 = '$DEMO_VERSION';/"
