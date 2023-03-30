@@ -42,14 +42,11 @@ jobs:
       - name: Extract git version
         shell: bash
         run: |
-          (
-            cd build
-            python3 -c 'from shakaBuildHelpers import git_version; print(git_version())'
-          ) > demo-version
+          echo $(git rev-parse --abbrev-ref HEAD)-$(git rev-parse --short HEAD)-uncompiled > demo-version
       - name: Tag the Player version
         shell: bash
         run: |
-          DEMO_VERSION="$(git rev-parse --abbrev-ref HEAD)-(git rev-parse --short HEAD)-uncompiled"
+          DEMO_VERSION="$(cat demo-version)-uncompiled"
           sed \
               -i lib/player.js \
               -e "s/\(shaka.Player.version\) = .*/\1 = '$DEMO_VERSION';/"
