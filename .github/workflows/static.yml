@@ -24,13 +24,46 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    name: Build Shaka Player
     steps:
-      - name: git-checkout
-        uses: actions/checkout@v2
-        
-      - name: Build
+      - name: Install dependencies
+        shell: bash
+        run: npm ci
+
+      - name: Build Shaka Player
+        shell: bash
         run: python build/all.py
+
+      - name: Extract git version
+        shell: bash
+        run: |
+          (
+            cd build
+            python3 -c 'from shakaBuildHelpers import git_version; print(git_version())'
+          ) > demo-version
+      - name: Tag the Player version
+        shell: bash
+        run: |
+          DEMO_VERSION="$(cat demo-version)-uncompiled"
+          sed \
+              -i lib/player.js \
+              -e "s/\(shaka.Player.version\) = .*/\1 = '$DEMO_VERSION';/"
+          rm demo-version
+      - name: Backup demo node modules
+        shell: bash
+        run: |
+          DEMO_NODE_MODULES=$(jq -r .shakaCustom.demoDeps[] package.json)
+          tar cf demo-modules.tar \
+              $(echo "$DEMO_NODE_MODULES" | sed -e 's@^@node_modules/@')
+      - name: Delete unneeded files
+        shell: bash
+        run: rm -rf .git .github build externs test node_modules
+
+      - name: Restore demo node modules
+        shell: bash
+        run: |
+          tar xf demo-modules.tar
+          rm demo-modules.tar
+
   deploy:
     environment:
       name: github-pages
@@ -45,7 +78,7 @@ jobs:
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
-          path: './demo'
+          path: './'
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v2
