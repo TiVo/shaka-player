@@ -25,9 +25,12 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: git-checkout
+        uses: actions/checkout@v2
+
       - name: Install dependencies
         shell: bash
-        run: npm install
+        run: npm ci
 
       - name: Build Shaka Player
         shell: bash
