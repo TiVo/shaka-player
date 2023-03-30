@@ -22,7 +22,15 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Single deploy job since we're just deploying
+  build:
+    runs-on: ubuntu-latest
+    name: Build Shaka Player
+    steps:
+      - name: git-checkout
+        uses: actions/checkout@v2
+        
+      - name: Build
+        run: python build/all.py
   deploy:
     environment:
       name: github-pages
