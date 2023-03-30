@@ -81,6 +81,11 @@ jobs:
           name: demo-app
           path: ./demo-app
 
+      - name: Remove .gitignore
+        shell: bash
+        run: |
+          rm $(cat demo-app/demo-version)/.gitignore
+  
       - name: Rename with release
         shell: bash
         run: |
@@ -108,11 +113,6 @@ jobs:
           <hr>
           </body>
           </html>" >> index.html
-  
-      - name: Remove .gitignore
-        shell: bash
-        run: |
-          rm $(cat demo-app/demo-version)/.gitignore
 
       - name: Commit & Push changes
         uses: actions-js/push@master
