@@ -109,11 +109,10 @@ jobs:
           </body>
           </html>" >> index.html
   
-      - name: Commit files
-        shell: bash
-        run: |
-          git config --global user.name "Demo App Deployer"
-          git config --global user.email "username@users.noreply.github.com"
-          git commit -a -m "Deploy demo app"
-          git push
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ secrets.TIVOBOT_GITHUB_ACTION_TOKEN }}
+
+
 
