@@ -79,8 +79,8 @@
       "pwacompat/pwacompat.min.js",
       "tippy.js/umd/index.min.js",
       "tippy.js/index.css",
-      "fastestsmallesttextencoderdecoder/EncoderDecoder.min.js",
-      "fastestsmallesttextencoderdecoder/TextEncoder.min.js"
+      "fastestsmallesttextencoderdecoder/NodeJS/EncoderDecoder.min.js",
+      "fastestsmallesttextencoderdecoder/NodeJS/TextEncoder.min.js"
     ]
   },
   "main": "dist/shaka-player.compiled.js",
