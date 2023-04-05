@@ -78,7 +78,9 @@
       "popper.js/dist/umd/popper.min.js",
       "pwacompat/pwacompat.min.js",
       "tippy.js/umd/index.min.js",
-      "tippy.js/index.css"
+      "tippy.js/index.css",
+      "fastestsmallesttextencoderdecoder/EncoderDecoder.min.js",
+      "fastestsmallesttextencoderdecoder/TextEncoder.min.js"
     ]
   },
   "main": "dist/shaka-player.compiled.js",
