@@ -36,6 +36,9 @@ shaka.test.FakeAbrManager = class {
     this.stop = jasmine.createSpy('stop');
 
     /** @type {!jasmine.Spy} */
+    this.release = jasmine.createSpy('release');
+
+    /** @type {!jasmine.Spy} */
     this.enable = jasmine.createSpy('enable');
 
     /** @type {!jasmine.Spy} */
@@ -225,6 +228,9 @@ shaka.test.FakeVideo = class {
 
     /** @type {!jasmine.Spy} */
     this.dispatchEvent = jasmine.createSpy('dispatchEvent');
+
+    /** @type {!jasmine.Spy} */
+    this.canPlayType = jasmine.createSpy('canPlayType');
   }
 };
 
@@ -523,7 +529,7 @@ shaka.test.FakeTransmuxer = class {
         jasmine.createSpy('transmux').and.returnValue(Promise.resolve(output));
 
     /** @type {!jasmine.Spy} */
-    this.getOrginalMimeType =
-        jasmine.createSpy('getOrginalMimeType').and.returnValue('mimeType');
+    this.getOriginalMimeType =
+        jasmine.createSpy('getOriginalMimeType').and.returnValue('mimeType');
   }
 };

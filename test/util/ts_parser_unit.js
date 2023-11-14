@@ -7,6 +7,7 @@
 describe('TsParser', () => {
   const Util = shaka.test.Util;
   const BufferUtils = shaka.util.BufferUtils;
+  const ContentType = shaka.util.ManifestParserUtils.ContentType;
 
   it('probes a TS segment', async () => {
     const responses = await Promise.all([
@@ -59,9 +60,8 @@ describe('TsParser', () => {
     ]);
     const tsSegment = BufferUtils.toUint8(responses[0]);
     const starttime = new shaka.util.TsParser().parse(tsSegment)
-        .getStartTime();
-    expect(starttime.audio).toBeCloseTo(90019.586, 3);
-    expect(starttime.video).toBe(null);
+        .getStartTime(ContentType.AUDIO);
+    expect(starttime).toBeCloseTo(90019.586, 3);
   });
 
   it('get the codecs from a TS segment', async () => {
@@ -72,6 +72,6 @@ describe('TsParser', () => {
     const codecs = new shaka.util.TsParser().parse(tsSegment)
         .getCodecs();
     expect(codecs.audio).toBe('aac');
-    expect(codecs.video).toBe('');
+    expect(codecs.video).toBe(null);
   });
 });

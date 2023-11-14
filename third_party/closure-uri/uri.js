@@ -8,7 +8,7 @@
  *
  * Use new goog.Uri(string) to parse a URI string.
  *
- * e.g: <code>var myUri = new goog.Uri(window.location);</code>
+ * e.g.: <code>var myUri = new goog.Uri(window.location);</code>
  *
  * Implements RFC 3986 for parsing/formatting URIs.
  * http://www.ietf.org/rfc/rfc3986.txt
@@ -827,6 +827,18 @@ goog.Uri.QueryData.prototype.add = function(key, value) {
   }
 
   return this;
+};
+
+
+/**
+ * Get the values from a key.
+ *
+ * @param {string} key Name.
+ * @return {Array.<string>}
+ */
+ goog.Uri.QueryData.prototype.get = function(key) {
+  this.ensureKeyMapInitialized_();
+  return this.keyMap_[key] || [];
 };
 
 

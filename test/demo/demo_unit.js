@@ -33,22 +33,6 @@ describe('Demo', () => {
     await shakaDemoMain.cleanup();
   });
 
-  it('has all messages defined', async () => {
-    const englishBuffer =
-        await shaka.test.Util.fetch('/base/demo/locales/en.json');
-    const englishMessages = JSON.parse(shaka.util.StringUtils.fromUTF8(
-        englishBuffer));
-    const sourceBuffer =
-        await shaka.test.Util.fetch('/base/demo/locales/source.json');
-    const sourceMessages = JSON.parse(shaka.util.StringUtils.fromUTF8(
-        sourceBuffer));
-
-    for (const id of Object.values(shakaDemo.MessageIds)) {
-      expect(englishMessages[id]).withContext(`id=${id}, English`).toBeTruthy();
-      expect(sourceMessages[id]).withContext(`id=${id}, source`).toBeTruthy();
-    }
-  });
-
   describe('config', () => {
     it('does not have entries for invalid config options', () => {
       // We determine whether a config option has been made or not by looking at
@@ -97,7 +81,10 @@ describe('Demo', () => {
           .add('manifest.hls.mediaPlaylistFullMimeType')
           .add('manifest.mss.keySystemsBySystemId')
           .add('drm.keySystemsMapping')
-          .add('streaming.parsePrftBox');
+          .add('streaming.parsePrftBox')
+          .add('manifest.raiseFatalErrorOnManifestUpdateRequestFailure')
+          .add('drm.persistentSessionOnlinePlayback')
+          .add('drm.persistentSessionsMetadata');
 
       /**
        * @param {!Object} section

@@ -49,7 +49,8 @@ describe('TextEngine', () => {
     textEngine.initParser(
         dummyMimeType,
         /* sequenceMode= */ false,
-        /* segmentRelativeVttTiming= */ false);
+        /* segmentRelativeVttTiming= */ false,
+        shaka.media.ManifestParser.UNKNOWN);
   });
 
   afterEach(() => {
@@ -66,14 +67,23 @@ describe('TextEngine', () => {
       expect(TextEngine.isTypeSupported(dummyMimeType)).toBe(false);
     });
 
-    it('reports support when it\'s closed captions',
-        () => {
-          // Both CEA-608 and CEA-708 is supported by our closed caption parser.
-          expect(TextEngine.isTypeSupported(
-              shaka.util.MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE)).toBe(true);
-          expect(TextEngine.isTypeSupported(
-              shaka.util.MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE)).toBe(true);
-        });
+    it('reports support for closed captions if decoder is installed', () => {
+      const originalFind = shaka.media.ClosedCaptionParser.findDecoder;
+      const mockFind = jasmine.createSpy('findDecoder').and.returnValue(null);
+      shaka.media.ClosedCaptionParser.findDecoder =
+          shaka.test.Util.spyFunc(mockFind);
+      // Both CEA-608 and CEA-708 is supported by our closed caption parser.
+      expect(TextEngine.isTypeSupported(
+          shaka.util.MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE)).toBe(false);
+      expect(TextEngine.isTypeSupported(
+          shaka.util.MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE)).toBe(false);
+
+      shaka.media.ClosedCaptionParser.findDecoder = originalFind;
+      expect(TextEngine.isTypeSupported(
+          shaka.util.MimeUtils.CEA608_CLOSED_CAPTION_MIMETYPE)).toBe(true);
+      expect(TextEngine.isTypeSupported(
+          shaka.util.MimeUtils.CEA708_CLOSED_CAPTION_MIMETYPE)).toBe(true);
+    });
   });
 
   describe('appendBuffer', () => {
@@ -95,6 +105,7 @@ describe('TextEngine', () => {
       expect(mockParseMedia).toHaveBeenCalledOnceMoreWith([
         dummyData,
         {periodStart: 0, segmentStart: 0, segmentEnd: 3, vttOffset: 0},
+        undefined,
       ]);
 
       expect(mockDisplayer.appendSpy).toHaveBeenCalledOnceMoreWith([
@@ -110,6 +121,7 @@ describe('TextEngine', () => {
       expect(mockParseMedia).toHaveBeenCalledOnceMoreWith([
         dummyData,
         {periodStart: 0, segmentStart: 3, segmentEnd: 5, vttOffset: 0},
+        undefined,
       ]);
 
       expect(mockDisplayer.appendSpy).toHaveBeenCalledOnceMoreWith([
@@ -262,6 +274,7 @@ describe('TextEngine', () => {
       expect(mockParseMedia).toHaveBeenCalledOnceMoreWith([
         dummyData,
         {periodStart: 0, segmentStart: 0, segmentEnd: 3, vttOffset: 0},
+        undefined,
       ]);
       expect(mockDisplayer.appendSpy).toHaveBeenCalledOnceMoreWith([
         [
@@ -276,6 +289,7 @@ describe('TextEngine', () => {
       expect(mockParseMedia).toHaveBeenCalledOnceMoreWith([
         dummyData,
         {periodStart: 4, segmentStart: 4, segmentEnd: 7, vttOffset: 4},
+        undefined,
       ]);
       expect(mockDisplayer.appendSpy).toHaveBeenCalledOnceMoreWith([
         [
@@ -289,7 +303,8 @@ describe('TextEngine', () => {
       textEngine.initParser(
           dummyMimeType,
           /* sequenceMode= */ false,
-          /* segmentRelativeVttTiming= */ true);
+          /* segmentRelativeVttTiming= */ true,
+          shaka.media.ManifestParser.UNKNOWN);
 
       mockParseMedia.and.callFake((data, time) => {
         return [
@@ -305,6 +320,7 @@ describe('TextEngine', () => {
       expect(mockParseMedia).toHaveBeenCalledOnceMoreWith([
         dummyData,
         {periodStart: 0, segmentStart: 0, segmentEnd: 3, vttOffset: 0},
+        undefined,
       ]);
 
       textEngine.setTimestampOffset(8);
@@ -314,6 +330,7 @@ describe('TextEngine', () => {
       expect(mockParseMedia).toHaveBeenCalledOnceMoreWith([
         dummyData,
         {periodStart: 8, segmentStart: 4, segmentEnd: 7, vttOffset: 4},
+        undefined,
       ]);
     });
   });

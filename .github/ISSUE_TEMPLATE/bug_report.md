@@ -12,7 +12,16 @@ assignees: ''
 **Have you read the [FAQ](https://bit.ly/ShakaFAQ) and checked for duplicate open issues?**
 
 
+**If the problem is related to FairPlay, have you read the tutorial?**
+<!-- NOTE: https://shaka-player-demo.appspot.com/docs/api/tutorial-fairplay.html -->
+
+
 **What version of Shaka Player are you using?**
+<!-- NOTE:
+  Only some versions of the application are maintained, if your version
+  is older, first update to a newer one. See:
+  https://github.com/shaka-project/shaka-player/blob/main/maintained-branches.md
+--->
 
 
 **Can you reproduce the issue with our latest release version?**
@@ -35,12 +44,14 @@ assignees: ''
 
 **What are the manifest and license server URIs?**
 <!-- NOTE:
-  You can send the URIs to <shaka-player-issues@google.com> instead,
+  You can send the URIs to <shaka-player-maintainers@googlegroups.com> instead,
   but please use GitHub and the template for the rest.
   A copy of the manifest text or an attached manifest will **not** be
   enough to reproduce your issue, and we **will** ask you to send a
   URI instead.  You can copy the URI of the demo app to send us the
   exact asset, licence server, and settings you have selected there.
+  If you send the URIs to email, the response time and resolution
+  will be much higher.
 -->
 
 

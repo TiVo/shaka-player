@@ -27,12 +27,17 @@ describe('Player Src Equals', () => {
   beforeEach(() => {
     player = new shaka.Player();
     player.addEventListener('error', fail);
+
+    // Disable stall detection, which can interfere with playback tests.
+    player.configure('streaming.stallEnabled', false);
+
     eventManager = new shaka.util.EventManager();
     waiter = new shaka.test.Waiter(eventManager);
   });
 
   afterEach(async () => {
     await player.destroy();
+    player.releaseAllMutexes();
 
     eventManager.release();
   });
@@ -101,7 +106,7 @@ describe('Player Src Equals', () => {
     expect(video.duration).not.toBeCloseTo(0);
 
     // Start playback and wait for the playhead to move.
-    video.play();
+    await video.play();
     await waiter.waitForMovementOrFailOnTimeout(video, /* timeout= */10);
 
     // Make sure the playhead is roughly where we expect it to be before
@@ -138,7 +143,7 @@ describe('Player Src Equals', () => {
     await loadWithSrcEquals(SMALL_MP4_CONTENT_URI, /* startTime= */ null);
 
     // For playback to begin so that we have some content buffered.
-    video.play();
+    await video.play();
     await waiter.waitForMovementOrFailOnTimeout(video, /* timeout= */10);
 
     const buffered = player.getBufferedInfo();
@@ -161,10 +166,6 @@ describe('Player Src Equals', () => {
   it('can control trick play rate', async () => {
     await loadWithSrcEquals(SMALL_MP4_CONTENT_URI, /* startTime= */ null);
 
-    // Let playback run for a little.
-    video.play();
-    await waiter.waitForMovementOrFailOnTimeout(video, /* timeout= */10);
-
     let videoRateChange = false;
     let playerRateChange = false;
     eventManager.listen(video, 'ratechange', () => {
@@ -173,6 +174,10 @@ describe('Player Src Equals', () => {
     eventManager.listen(player, 'ratechange', () => {
       playerRateChange = true;
     });
+
+    // Let playback run for a little.
+    await video.play();
+    await waiter.waitForMovementOrFailOnTimeout(video, /* timeout= */10);
 
     // Enabling trick play should change our playback rate to the same rate.
     player.trickPlay(2);
@@ -279,7 +284,7 @@ describe('Player Src Equals', () => {
     expect(video.currentTime).toBeCloseTo(0);
 
     // Start playback and wait. We should see the playhead move.
-    video.play();
+    await video.play();
     await waiter.waitForMovementOrFailOnTimeout(video, /* timeout= */10);
     await shaka.test.Util.delay(1.5);
 
@@ -296,7 +301,7 @@ describe('Player Src Equals', () => {
 
     // Wait some time for playback to start so that we will have a load latency
     // value.
-    video.play();
+    await video.play();
     await waiter.waitForMovementOrFailOnTimeout(video, /* timeout= */10);
 
     // Get the stats and check that some stats have been filled in.
@@ -417,6 +422,72 @@ describe('Player Src Equals', () => {
     await loadWithSrcEquals(SMALL_MP4_CONTENT_URI, /* startTime= */ null);
     expect(player.getManifest()).toBeFalsy();
   });
+
+  describe('addThumbnailsTrack', () => {
+    it('appends thumbnails for external thumbnails with sprites',
+        async () => {
+          await loadWithSrcEquals(SMALL_MP4_CONTENT_URI, /* startTime= */ null);
+          const locationUri = new goog.Uri(location.href);
+          const partialUri =
+              new goog.Uri('/base/test/test/assets/thumbnails-sprites.vtt');
+          const absoluteUri = locationUri.resolve(partialUri);
+          const newTrack =
+              await player.addThumbnailsTrack(absoluteUri.toString());
+
+          expect(player.getImageTracks()).toEqual([newTrack]);
+
+          const thumbnail1 = await player.getThumbnails(newTrack.id, 0);
+          expect(thumbnail1.startTime).toBe(0);
+          expect(thumbnail1.duration).toBe(5);
+          expect(thumbnail1.height).toBe(90);
+          expect(thumbnail1.positionX).toBe(0);
+          expect(thumbnail1.positionY).toBe(0);
+          expect(thumbnail1.width).toBe(160);
+          const thumbnail2 = await player.getThumbnails(newTrack.id, 10);
+          expect(thumbnail2.startTime).toBe(5);
+          expect(thumbnail2.duration).toBe(25);
+          expect(thumbnail2.height).toBe(90);
+          expect(thumbnail2.positionX).toBe(160);
+          expect(thumbnail2.positionY).toBe(0);
+          expect(thumbnail2.width).toBe(160);
+          const thumbnail3 = await player.getThumbnails(newTrack.id, 40);
+          expect(thumbnail3.startTime).toBe(30);
+          expect(thumbnail3.duration).toBe(30);
+          expect(thumbnail3.height).toBe(90);
+          expect(thumbnail3.positionX).toBe(160);
+          expect(thumbnail3.positionY).toBe(90);
+          expect(thumbnail3.width).toBe(160);
+
+          const thumbnails = await player.getAllThumbnails(newTrack.id);
+          expect(thumbnails.length).toBe(3);
+        });
+
+    it('appends thumbnails for external thumbnails without sprites',
+        async () => {
+          await loadWithSrcEquals(SMALL_MP4_CONTENT_URI, /* startTime= */ null);
+          const locationUri = new goog.Uri(location.href);
+          const partialUri =
+              new goog.Uri('/base/test/test/assets/thumbnails.vtt');
+          const absoluteUri = locationUri.resolve(partialUri);
+          const newTrack =
+              await player.addThumbnailsTrack(absoluteUri.toString());
+
+          expect(player.getImageTracks()).toEqual([newTrack]);
+
+          const thumbnail1 = await player.getThumbnails(newTrack.id, 0);
+          expect(thumbnail1.startTime).toBe(0);
+          expect(thumbnail1.duration).toBe(5);
+          const thumbnail2 = await player.getThumbnails(newTrack.id, 10);
+          expect(thumbnail2.startTime).toBe(5);
+          expect(thumbnail2.duration).toBe(25);
+          const thumbnail3 = await player.getThumbnails(newTrack.id, 40);
+          expect(thumbnail3.startTime).toBe(30);
+          expect(thumbnail3.duration).toBe(30);
+
+          const thumbnails = await player.getAllThumbnails(newTrack.id);
+          expect(thumbnails.length).toBe(3);
+        });
+  }); // describe('addThumbnailsTrack')
 
   /**
    * @param {string} contentUri

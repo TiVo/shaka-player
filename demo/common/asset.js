@@ -12,8 +12,6 @@
 
 goog.provide('ShakaDemoAssetInfo');
 
-goog.require('shakaDemo.MessageIds');
-
 
 /**
  * An object that contains information about an asset.
@@ -45,6 +43,10 @@ const ShakaDemoAssetInfo = class {
     this.disabled = false;
     /** @type {!Array.<!shakaAssets.ExtraText>} */
     this.extraText = [];
+    /** @type {!Array.<string>} */
+    this.extraThumbnail = [];
+    /** @type {!Array.<!shakaAssets.ExtraChapter>} */
+    this.extraChapter = [];
     /** @type {?string} */
     this.certificateUri = null;
     /** @type {?string} */
@@ -78,9 +80,11 @@ const ShakaDemoAssetInfo = class {
     /** @type {?string} */
     this.imaManifestType = null;
     /** @type {?string} */
-    this.mimeType = null;
+    this.mediaTailorUrl = null;
+    /** @type {?Object} */
+    this.mediaTailorAdsParams = null;
     /** @type {?string} */
-    this.mediaPlaylistFullMimeType = null;
+    this.mimeType = null;
 
 
     // Offline storage values.
@@ -113,9 +117,9 @@ const ShakaDemoAssetInfo = class {
   }
 
   /**
-   * A sort comparator for comparing two message Ids, ignoring case.
-   * @param {shakaDemo.MessageIds} a
-   * @param {shakaDemo.MessageIds} b
+   * A sort comparator for comparing two messages, ignoring case.
+   * @param {string} a
+   * @param {string} b
    * @return {number}
    * @private
    */
@@ -165,13 +169,9 @@ const ShakaDemoAssetInfo = class {
     return this.drm.length == 1 && this.drm[0] == shakaAssets.KeySystem.CLEAR;
   }
 
-  /**
-   * @param {string} mediaPlaylistFullMimeType
-   * @return {!ShakaDemoAssetInfo}
-   */
-  setMediaPlaylistFullMimeType(mediaPlaylistFullMimeType) {
-    this.mediaPlaylistFullMimeType = mediaPlaylistFullMimeType;
-    return this;
+  /** @return {boolean} */
+  isAes128() {
+    return this.drm.length == 1 && this.drm[0] == shakaAssets.KeySystem.AES128;
   }
 
   /**
@@ -283,6 +283,21 @@ const ShakaDemoAssetInfo = class {
   }
 
   /**
+   * @param {string} url
+   * @param {?Object=} adsParams
+   * @return {!ShakaDemoAssetInfo}
+   */
+  setMediaTailor(url, adsParams=null) {
+    this.mediaTailorUrl = url;
+    this.mediaTailorAdsParams = adsParams;
+    if (!this.features.includes(shakaAssets.Feature.ADS)) {
+      this.addFeature(shakaAssets.Feature.ADS);
+    }
+
+    return this;
+  }
+
+  /**
    * @param {string} headerName
    * @param {string} headerValue
    * @return {!ShakaDemoAssetInfo}
@@ -297,8 +312,25 @@ const ShakaDemoAssetInfo = class {
    * @return {!ShakaDemoAssetInfo}
    */
   addExtraText(extraText) {
-    // TODO: At no point do we actually use the extraText... why does it exist?
     this.extraText.push(extraText);
+    return this;
+  }
+
+  /**
+   * @param {string} uri
+   * @return {!ShakaDemoAssetInfo}
+   */
+  addExtraThumbnail(uri) {
+    this.extraThumbnail.push(uri);
+    return this;
+  }
+
+  /**
+   * @param {shakaAssets.ExtraChapter} extraChapter
+   * @return {!ShakaDemoAssetInfo}
+   */
+  addExtraChapter(extraChapter) {
+    this.extraChapter.push(extraChapter);
     return this;
   }
 
@@ -401,11 +433,6 @@ const ShakaDemoAssetInfo = class {
       for (const key in this.extraConfig) {
         config[key] = this.extraConfig[key];
       }
-    }
-
-    if (this.mediaPlaylistFullMimeType) {
-      config.manifest.hls.mediaPlaylistFullMimeType =
-          this.mediaPlaylistFullMimeType;
     }
 
     if (this.licenseServers.size) {

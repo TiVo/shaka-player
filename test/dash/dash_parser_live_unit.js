@@ -36,6 +36,8 @@ describe('DashParser Live', () => {
       enableLowLatencyMode: () => {},
       updateDuration: () => {},
       newDrmInfo: (stream) => {},
+      onManifestUpdated: () => {},
+      getBandwidthEstimate: () => 1e6,
     };
   });
 
@@ -589,6 +591,8 @@ describe('DashParser Live', () => {
     const onError = jasmine.createSpy('onError');
     playerInterface.onError = Util.spyFunc(onError);
 
+    const updateTick = updateTickSpy();
+
     fakeNetEngine.setResponseText('dummy://foo', manifestText);
     await parser.start('dummy://foo', playerInterface);
 
@@ -603,6 +607,39 @@ describe('DashParser Live', () => {
 
     await updateManifest();
     expect(onError).toHaveBeenCalledTimes(1);
+    expect(updateTick).toHaveBeenCalledTimes(2);
+  });
+
+  it('fatal error on manifest update request failure when ' +
+      'raiseFatalErrorOnManifestUpdateRequestFailure is true', async () => {
+    const manifestConfig =
+      shaka.util.PlayerConfiguration.createDefault().manifest;
+    manifestConfig.raiseFatalErrorOnManifestUpdateRequestFailure = true;
+    parser.configure(manifestConfig);
+
+    const updateTick = updateTickSpy();
+
+    const lines = [
+      '<SegmentTemplate startNumber="1" media="s$Number$.mp4" duration="2"/>',
+    ];
+    const manifestText = makeSimpleLiveManifestText(lines, updateTime);
+    /** @type {!jasmine.Spy} */
+    const onError = jasmine.createSpy('onError');
+    playerInterface.onError = Util.spyFunc(onError);
+
+    fakeNetEngine.setResponseText('dummy://foo', manifestText);
+    await parser.start('dummy://foo', playerInterface);
+
+    const error = new shaka.util.Error(
+        shaka.util.Error.Severity.CRITICAL,
+        shaka.util.Error.Category.NETWORK,
+        shaka.util.Error.Code.BAD_HTTP_STATUS);
+    const operation = shaka.util.AbortableOperation.failed(error);
+    fakeNetEngine.request.and.returnValue(operation);
+
+    await updateManifest();
+    expect(onError).toHaveBeenCalledWith(error);
+    expect(updateTick).toHaveBeenCalledTimes(1);
   });
 
   it('uses @minimumUpdatePeriod', async () => {
@@ -622,26 +659,6 @@ describe('DashParser Live', () => {
     expect(tickAfter).toHaveBeenCalledTimes(1);
     const delay = tickAfter.calls.mostRecent().args[0];
     expect(delay).toBe(updateTime);
-  });
-
-  it('still updates when @minimumUpdatePeriod is zero', async () => {
-    const lines = [
-      '<SegmentTemplate startNumber="1" media="s$Number$.mp4" duration="2" />',
-    ];
-    // updateTime parameter sets @minimumUpdatePeriod in the manifest.
-    const manifestText = makeSimpleLiveManifestText(lines, /* updateTime= */ 0);
-
-    /** @type {!jasmine.Spy} */
-    const tickAfter = updateTickSpy();
-    Date.now = () => 0;
-
-    fakeNetEngine.setResponseText('dummy://foo', manifestText);
-    await parser.start('dummy://foo', playerInterface);
-
-    const waitTime = shaka.dash.DashParser['MIN_UPDATE_PERIOD_'];
-    expect(tickAfter).toHaveBeenCalledTimes(1);
-    const delay = tickAfter.calls.mostRecent().args[0];
-    expect(delay).toBe(waitTime);
   });
 
   it('does not update when @minimumUpdatePeriod is missing', async () => {
@@ -666,8 +683,7 @@ describe('DashParser Live', () => {
       '<SegmentTemplate startNumber="1" media="s$Number$.mp4" duration="2" />',
     ];
     const extraWaitTime = 15.0;
-    const idealUpdateTime = shaka.dash.DashParser['MIN_UPDATE_PERIOD_'];
-    const manifestText = makeSimpleLiveManifestText(lines, idealUpdateTime);
+    const manifestText = makeSimpleLiveManifestText(lines, 3);
 
     let now = 0;
     Date.now = () => now;

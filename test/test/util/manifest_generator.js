@@ -101,6 +101,9 @@ shaka.test.ManifestGenerator.Manifest = class {
     this.ignoreManifestTimestampsInSegmentsMode = false;
     /** @type {string} */
     this.type = 'UNKNOWN';
+    /** @type {?shaka.extern.ServiceDescription} */
+    this.serviceDescription = null;
+
 
     /** @type {shaka.extern.Manifest} */
     const foo = this;
@@ -452,13 +455,15 @@ shaka.test.ManifestGenerator.Stream = class {
    * @param {boolean} isPartial
    * @param {?number} id
    * @param {shaka.util.ManifestParserUtils.ContentType} type
-   * @param {string=} lang
+   * @param {?string=} lang
    * @param {string=} label
    */
   constructor(manifest, isPartial, id, type, lang, label) {
-    goog.asserts.assert(
-        !manifest || !manifest.isIdUsed_(id),
-        'Streams should have unique ids!');
+    // variants can be made up of different combinations of video
+    // and audio streams
+    // goog.asserts.assert(
+    //     !manifest || !manifest.isIdUsed_(id),
+    //     'Streams should have unique ids!');
     const ContentType = shaka.util.ManifestParserUtils.ContentType;
 
     /** @const {shaka.test.ManifestGenerator.Manifest} */
@@ -496,6 +501,8 @@ shaka.test.ManifestGenerator.Stream = class {
 
       /** @type {?string} */
       this.originalId = null;
+      /** @type {?string} */
+      this.groupId = null;
       /** @type {shaka.extern.CreateSegmentIndexFunction} */
       this.createSegmentIndex = shaka.test.Util.spyFunc(create);
       /** @type {shaka.media.SegmentIndex} */
@@ -523,7 +530,9 @@ shaka.test.ManifestGenerator.Stream = class {
       /** @type {!Set.<string>} */
       this.keyIds = new Set();
       /** @type {string} */
-      this.language = lang || 'und';
+      this.language = shaka.util.LanguageUtils.normalize(lang || 'und');
+      /** @type {?string} */
+      this.originalLanguage = lang || null;
       /** @type {?string} */
       this.label = label || null;
       /** @type {boolean} */
@@ -547,7 +556,15 @@ shaka.test.ManifestGenerator.Stream = class {
       /** @type {(string|undefined)} */
       this.hdr = undefined;
       /** @type {(string|undefined)} */
+      this.videoLayout = undefined;
+      /** @type {(string|undefined)} */
       this.tilesLayout = undefined;
+      /** @type {?shaka.media.ManifestParser.AccessibilityPurpose} */
+      this.accessibilityPurpose;
+      /** @type {boolean} */
+      this.external = false;
+      /** @type {boolean} */
+      this.fastSwitching = false;
     }
 
     /** @type {shaka.extern.Stream} */

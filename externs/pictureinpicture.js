@@ -53,10 +53,8 @@ HTMLMediaElement.prototype.webkitPresentationMode;
 
 /**
  * @typedef {{
- *   initialAspectRatio: (number|undefined),
  *   width: (number|undefined),
  *   height: (number|undefined),
- *   copyStyleSheets: (boolean|undefined),
  * }}
  */
 var DocumentPictureInPictureOptions;
@@ -99,3 +97,14 @@ DocumentPictureInPicture.prototype.dispatchEvent = function(event) {};
  * @type {!DocumentPictureInPicture}
  */
 Window.prototype.documentPictureInPicture;
+
+
+/**
+ * @constructor
+ * @extends {Event}
+ */
+function DocumentPictureInPictureEvent() {}
+
+
+/** @type {Window} */
+DocumentPictureInPictureEvent.prototype.window;

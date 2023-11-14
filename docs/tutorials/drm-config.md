@@ -59,15 +59,18 @@ If this is the only `<ContentProtection>` element in the manifest, Shaka will
 try all key systems it knows. (Based on keySystemsByURI in
 {@linksource shaka.extern.DashManifestConfiguration}.)
 
-Through `player.configure()`, you can change the dash key systems mapping by
+Through `player.configure()`, you can update the dash key systems mapping by
 scheme URI:
+
 ```js
 player.configure({
-  dash: {
-    keySystemsByURI: {
-      'urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95': 'com.microsoft.playready.recommendation',
-      'urn:uuid:79f0049a-4098-8642-ab92-e65be0885f95': 'com.microsoft.playready.recommendation',
-    }
+  manifest: {
+    dash: {
+      keySystemsByURI: {
+        'urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95': 'com.microsoft.playready.recommendation',
+        'urn:uuid:79f0049a-4098-8642-ab92-e65be0885f95': 'com.microsoft.playready.recommendation',
+      }
+  }
   }
 });
 ```
@@ -208,3 +211,64 @@ you should provide an empty string as robustness
 ##### Other key-systems
 
 Values for other key systems are not known to us at this time.
+
+#### Re-use persistent license DRM for online playback
+
+If your DRM provider configuration allows you to deliver persistent license,
+you could re-use the created MediaKeys session for the next online playback.
+
+Configure Shaka to start DRM sessions with the `persistent-license` type
+instead of the `temporary` one:
+
+```js
+player.configure({
+  drm: {
+    advanced: {
+      'com.widevine.alpha': {
+        'sessionType': 'persistent-license'
+      }
+    }
+  }
+});
+```
+
+**Using `persistent-license` might not work on every devices, use this feature
+carefully.**
+
+When the playback starts, you can retrieve the sessions metadata:
+
+```js
+const activeDrmSessions = this.player.getActiveSessionsMetadata();
+const persistentDrmSessions = activeDrmSessions.filter(
+  ({ sessionType }) => sessionType === 'persistent-license');
+
+// Add your own storage mechanism here, give it an unique known identifier for
+// the playing video
+```
+
+When starting the same video again, retrieve the metadata from the storage, and
+set it back to Shaka's configuration.
+
+Shaka will load the given DRM persistent sessions and will only request a
+license if some keys are missing for the content.
+
+```js
+player.configure({
+  drm: {
+    persistentSessionOnlinePlayback: true,
+    persistentSessionsMetadata: [{
+      sessionId: 'deadbeefdeadbeefdeadbeefdeadbeef',
+      initData: new InitData(0),
+      initDataType: 'cenc'
+    }]
+  }
+});
+```
+
+NB: Shaka doesn't provide a out-of-the-box storage mechanism for the sessions
+metadata.
+
+#### Continue the Tutorials
+
+Next, check out {@tutorial license-server-auth}.
+Or check out {@tutorial fairplay}.

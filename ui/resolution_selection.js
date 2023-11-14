@@ -8,6 +8,7 @@
 goog.provide('shaka.ui.ResolutionSelection');
 
 goog.require('goog.asserts');
+goog.require('shaka.Player');
 goog.require('shaka.ui.Controls');
 goog.require('shaka.ui.Enums');
 goog.require('shaka.ui.Locales');
@@ -67,7 +68,12 @@ shaka.ui.ResolutionSelection = class extends shaka.ui.SettingsMenu {
   /** @private */
   updateResolutionSelection_() {
     /** @type {!Array.<shaka.extern.Track>} */
-    let tracks = this.player.getVariantTracks();
+    let tracks = [];
+    // When played with src=, the variant tracks available from
+    // player.getVariantTracks() represent languages, not resolutions.
+    if (this.player.getLoadMode() != shaka.Player.LoadMode.SRC_EQUALS) {
+      tracks = this.player.getVariantTracks();
+    }
 
     // If there is a selected variant track, then we filter out any tracks in
     // a different language.  Then we use those remaining tracks to display the
@@ -83,10 +89,18 @@ shaka.ui.ResolutionSelection = class extends shaka.ui.SettingsMenu {
     // Remove duplicate entries with the same resolution or quality depending
     // on content type.  Pick an arbitrary one.
     tracks = tracks.filter((track, idx) => {
-      // Keep the first one with the same height or bandwidth.
-      const otherIdx = this.player.isAudioOnly() ?
-          tracks.findIndex((t) => t.bandwidth == track.bandwidth) :
-          tracks.findIndex((t) => t.height == track.height);
+      // Keep the first one with the same height and framrate or bandwidth.
+      let otherIdx = -1;
+      if (this.player.isAudioOnly()) {
+        otherIdx = tracks.findIndex((t) => t.bandwidth == track.bandwidth);
+      } else {
+        otherIdx = tracks.findIndex((t) => {
+          return t.height == track.height &&
+              t.frameRate == track.frameRate &&
+              t.hdr == track.hdr &&
+              t.videoLayout == track.videoLayout;
+        });
+      }
       return otherIdx == idx;
     });
 
@@ -126,8 +140,13 @@ shaka.ui.ResolutionSelection = class extends shaka.ui.SettingsMenu {
           () => this.onTrackSelected_(track));
 
       const span = shaka.util.Dom.createHTMLElement('span');
-      span.textContent = this.player.isAudioOnly() ?
-          Math.round(track.bandwidth / 1000) + ' kbits/s' : track.height + 'p';
+      if (this.player.isAudioOnly() && track.bandwidth) {
+        span.textContent = Math.round(track.bandwidth / 1000) + ' kbits/s';
+      } else if (track.height && track.width) {
+        span.textContent = this.getResolutionLabel_(track);
+      } else {
+        span.textContent = 'Unknown';
+      }
       button.appendChild(span);
 
       if (!abrEnabled && track == selectedTrack) {
@@ -175,6 +194,37 @@ shaka.ui.ResolutionSelection = class extends shaka.ui.SettingsMenu {
         new shaka.util.FakeEvent('resolutionselectionupdated'));
 
     this.updateLocalizedStrings_();
+  }
+
+
+  /**
+   * @param {!shaka.extern.Track} track
+   * @return {string}
+   * @private
+   */
+  getResolutionLabel_(track) {
+    const trackHeight = track.height || 0;
+    const trackWidth = track.width || 0;
+    let height = trackHeight;
+    const aspectRatio = trackWidth / trackHeight;
+    if (aspectRatio > (16 / 9)) {
+      height = Math.round(trackWidth * 9 / 16);
+    }
+    let text = height + 'p';
+    if (height == 2160) {
+      text = '4K';
+    }
+    const frameRate = track.frameRate;
+    if (frameRate && (frameRate >= 50 || frameRate <= 20)) {
+      text += Math.round(track.frameRate);
+    }
+    if (track.hdr == 'PQ' || track.hdr == 'HLG') {
+      text += ' (HDR)';
+    }
+    if (track.videoLayout == 'CH-STEREO') {
+      text += ' (3D)';
+    }
+    return text;
   }
 
 

@@ -33,24 +33,24 @@ for the up-to-date list of maintained branches of Shaka Player.
 
 ## Platform and browser support matrix
 
-|Browser    |Windows   |Mac      |Linux    |Android  |iOS >= 13 |ChromeOS|Other|
-|:---------:|:--------:|:-------:|:-------:|:-------:|:--------:|:------:|:---:|
-|Chrome¹    |**Y**     |**Y**    |**Y**    |**Y**    |**Native**|**Y**   | -   |
-|Firefox¹   |**Y**     |**Y**    |**Y**    |untested⁵|**Native**| -      | -   |
-|Edge¹      |**Y**     | -       | -       | -       | -        | -      | -   |
-|Edge Chromium|**Y**     |**Y**    |**Y**     |untested⁵|**Native**| -      | -   |
-|IE         | N        | -       | -       | -       | -        | -      | -   |
-|Safari¹    | -        |**Y**    | -       | -       |**iPadOS 13<br>Native**| - | - |
-|Opera¹     |untested⁵ |untested⁵|untested⁵|untested⁵|**Native**| -      | -   |
-|Chromecast²| -        | -       | -       | -       | -        | -      |**Y**|
-|Tizen TV³  | -        | -       | -       | -       | -        | -      |**Y**|
-|WebOS⁶     | -        | -       | -       | -       | -        | -      |**Y**|
-|Xbox One   | -        | -       | -       | -       | -        | -      |**Y**|
-|Playstation 4⁷| -        | -       | -       | -       | -        | -      |**Y**|
-|Playstation 5⁷| -        | -       | -       | -       | -        | -      |**Y**|
+|Browser       |Windows   |Mac      |Linux    |Android  |iOS >= 9  |iOS >= 17.1|iPadOS >= 13|ChromeOS|Other|
+|:------------:|:--------:|:-------:|:-------:|:-------:|:--------:|:---------:|:----------:|:------:|:---:|
+|Chrome¹       |**Y**     |**Y**    |**Y**    |**Y**    |**Native**|**Native** |**Native**  |**Y**   | -   |
+|Firefox¹      |**Y**     |**Y**    |**Y**    |untested⁵|**Native**|**Native** |**Native**  | -      | -   |
+|Edge¹         |**Y**     | -       | -       | -       | -        | -         | -          | -      | -   |
+|Edge Chromium |**Y**     |**Y**    |**Y**    |untested⁵|**Native**|**Native** |**Native**  | -      | -   |
+|IE            | N        | -       | -       | -       | -        | -         | -          | -      | -   |
+|Safari¹       | -        |**Y**    | -       | -       |**Native**|**Y**      |**Y**       | -      | -   |
+|Opera¹        |untested⁵ |untested⁵|untested⁵|untested⁵|**Native**| -         | -          | -      | -   |
+|Chromecast².  | -        | -       | -       | -       | -        | -         | -          | -      |**Y**|
+|Tizen TV³     | -        | -       | -       | -       | -        | -         | -          | -      |**Y**|
+|WebOS⁶        | -        | -       | -       | -       | -        | -         | -          | -      |**Y**|
+|Xbox One      | -        | -       | -       | -       | -        | -         | -          | -      |**Y**|
+|Playstation 4⁷| -        | -       | -       | -       | -        | -         | -          | -      |**Y**|
+|Playstation 5⁷| -        | -       | -       | -       | -        | -         | -          | -      |**Y**|
 
 NOTES:
- - ¹: On macOS, only Safari 13+ is supported.  On iOS, only iOS 13+ is
+ - ¹: On macOS, only Safari 9+ is supported.  On iOS, only iOS 9+ is
    supported.  Older versions will be rejected.
  - ²: The latest stable Chromecast firmware is tested. Both sender and receiver
    can be implemented with Shaka Player.
@@ -65,18 +65,12 @@ NOTES:
  - ⁷: These are expected to work, but are community-supported and untested by
    us.
 
-We support iOS 13+ through Apple's native HLS player.  We provide the same
-top-level API, but we just set the video's `src` element to the manifest/media.
-So we are dependent on the browser supporting the manifests.
-
-### Shaka Player Embedded (for native iOS)
-
-We have another project called [Shaka Player Embedded][] which offers the same
-features and similar APIs for native apps on iOS. This project uses its own
-media stack, which allows it to play content that would otherwise not be
-supported. This supports both DASH and HLS manifests.
-
-[Shaka Player Embedded]: https://github.com/shaka-project/shaka-player-embedded
+NOTES for iOS and iPadOS:
+ - We support iOS 9+ through Apple's native HLS player.  We provide the same
+   top-level API, but we just set the video's `src` element to the manifest/media.
+   So we are dependent on the browser supporting the manifests.
+ - Since iPadOS 13 [MediaSource Extensions][] is supported
+ - Since iPadOS 17 and iOS 17.1 [ManagedMediaSource Extensions][] is supported
 
 
 ## Manifest format support matrix
@@ -115,7 +109,6 @@ DASH features **not** supported:
  - Xlink with actuate=onRequest
  - Manifests without any segment info:
    https://github.com/shaka-project/shaka-player/issues/1088
- - Changing codecs during a presentation (unsupported by MSE)
  - Multiple trick mode tracks for the same resolution at varying framerates or
    bitrates
  - Timescales so large that timestamps cannot be represented as integers in
@@ -128,36 +121,33 @@ DASH features **not** supported:
 
 HLS features supported:
  - VOD, Live, and Event types
- - Low-latency streaming with partial segments, preload hints, and delta updates
+ - Low-latency streaming with partial segments, preload hints, delta updates and
+   blocking playlist reload
  - Discontinuity
  - ISO-BMFF / MP4 / CMAF support
- - MPEG-2 TS support (transmuxing provided by [mux.js][] v6.2.0+, must be
-   separately included)
+ - MPEG-2 TS support
  - WebVTT and TTML
  - CEA-608/708 captions
  - Encrypted content with PlayReady and Widevine
- - Encrypted content with FairPlay (Safari on macOS and iOS 13+ only)
+ - Encrypted content with FairPlay (Safari on macOS and iOS 9+ only)
  - Key rotation
- - Raw AAC, MP3, etc (without an MP4 container)
+ - Raw AAC, MP3, AC-3 and EC-3 (without an MP4 container)
+ - I-frame-only playlists with mjpg codec for thumbnails
+ - #EXT-X-IMAGE-STREAM-INF for thumbnails
 
-HLS features **not** supported:
- - I-frame-only playlists: https://github.com/shaka-project/shaka-player/issues/742
- - Low-latency streaming with blocking playlist reload
-
-[mux.js]: https://github.com/videojs/mux.js/releases
 
 ## MPEG-5 Part2 LCEVC Support
 
 **Only supported on browsers with Media Source Extensions SourceBuffer support**
 
- - MPEG-5 Part2 LCEVC decoding support (decoding provided by [lcevc_dil.js][], must be
+ - MPEG-5 Part2 LCEVC decoding support (decoding provided by [lcevc_dec.js][], must be
    separately included)
 
  - Integration documentation : [docs](docs/design/lcevc-integration.md)
 
  - More on [MPEG-5 Part2 LCEVC][]
 
-[lcevc_dil.js]: https://www.npmjs.com/package/lcevc_dil.js
+[lcevc_dec.js]: https://www.npmjs.com/package/lcevc_dec.js
 [MPEG-5 Part2 LCEVC]: https://www.lcevc.org
 
 
@@ -235,8 +225,7 @@ Shaka Player supports:
       SegmentTemplate@index
     - Not supported in HLS
   - MPEG-2 TS
-    - With help from [mux.js][] v6.2.0+, can be played on any browser which
-      supports MP4
+    - Can be played on any browser which supports MP4
     - Can find and parse timestamps to find segment start time in HLS
   - WebVTT
     - Supported in both text form and embedded in MP4
@@ -246,6 +235,18 @@ Shaka Player supports:
     - Supported embedded in MP4 and TS
   - CEA-708
     - Supported embedded in MP4 and TS
+  - Raw AAC
+    - Supported in raw AAC container and transmuxing to AAC in MP4 container
+      (depends on browser support via MediaSource).
+  - Raw MP3
+    - Supported in raw MP3 container and transmuxing to MP3 in MP4 container
+      (depends on browser support via MediaSource).
+  - Raw AC-3
+    - Supported in raw AC-3 container and transmuxing to AC-3 in MP4 container
+      (depends on browser support via MediaSource).
+  - Raw EC-3
+    - Supported in raw EC-3 container and transmuxing to EC-3 in MP4 container
+      (depends on browser support via MediaSource).
   - SubRip (SRT)
     - UTF-8 encoding only
   - LyRiCs (LRC)
@@ -262,6 +263,54 @@ attributes.
 [cueing data]: https://www.webmproject.org/docs/container/#cueing-data
 [text display plugin]: https://nightly-dot-shaka-player-demo.appspot.com/docs/api/shaka.extern.TextDisplayer.html
 <!-- TODO: replace with a link to a TextDisplayer tutorial -->
+
+
+## Transmuxer support
+
+Shaka Player supports:
+  - Raw AAC to AAC in MP4
+  - Raw MP3 to MP3 in MP4
+  - Raw AC-3 to AC-3 in MP4
+  - Raw EC-3 to EC-3 in MP4
+  - AAC in MPEG-2 TS to AAC in MP4
+  - AC-3 in MPEG-2 TS to AC-3 in MP4
+  - EC-3 in MPEG-2 TS to EC-3 in MP4
+  - MP3 in MPEG-2 TS to MP3 in MP4
+  - MP3 in MPEG-2 TS to raw MP3
+  - H.264 in MPEG-2 TS to H.264 in MP4
+  - H.265 in MPEG-2 TS to H.265 in MP4
+  - Muxed content in MPEG-2 TS with the previous codecs
+
+
+## Thumbnails support
+
+Shaka Player supports:
+  - Internal DASH thumbnails. Using DASH-IF IOP Image Adaptation Set
+  - Internal HLS thumbnails. Using HLS Image Media Playlist
+  - Internal HLS thumbnails. Using I-frame-only playlists with mjpg codec
+  - External WebVTT with images/sprites (only for VoD)
+
+
+## Monetization with Ads
+
+Shaka Player supports:
+- IMA SDK for Client-Side Ad Insertion
+- IMA DAI SDK for Server-Side Ad Insertion
+- AWS MediaTailor for Client-Side
+- AWS MediaTailor for Server-Side
+- AWS MediaTailor overlays
+
+
+## Content Steering support
+Shaka Player supports Content Steering (v1) in DASH.
+
+Content Steering features supported:
+- TTL, if missing, the default value is 300 seconds.
+- RELOAD-URI, if missing we use the url provided in the manifest as fallback.
+- PATHWAY-PRIORITY only HOST replacement
+
+Content Steering features **not** supported:
+- PATHWAY-CLONES other replacements than HOST.
 
 
 ## Documentation & Important Links ##
@@ -297,6 +346,9 @@ for more information on the process we would like contributors to follow.
 The Shaka team doesn't have the bandwidth and experience to provide guidance and
 support for integrating Shaka Player with specific frameworks, but some of our
 users have successfully done so and created tutorials to help other beginners.
+
+Shaka + ReactJS Library
+- https://github.com/winoffrg/limeplay
 
 Shaka + ReactJS integrations:
 - https://github.com/matvp91/shaka-player-react

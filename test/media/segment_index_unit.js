@@ -223,7 +223,7 @@ describe('SegmentIndex', /** @suppress {accessControls} */ () => {
 
       index.fit(/* windowStart= */ 0, /* windowEnd= */ 10);
       expect(
-          index.references[index.references.length - 1].hlsAes128Key,
+          index.references[index.references.length - 1].aes128Key,
       ).toEqual({method: 'AES-128', firstMediaSequenceNumber: 0});
     });
   });
@@ -740,6 +740,58 @@ describe('SegmentIndex', /** @suppress {accessControls} */ () => {
       expect(iterator.current()).toBe(null);
     });
 
+    describe('getIteratorForTime', () => {
+      it('begins with an independent partial segment', () => {
+        // This test contains its own segment refs, which are manipulated to
+        // look a little different from the more general ones used elsewhere.
+        // In particular, we mark some partial refs as dependent, and we make
+        // the second partial list much longer.
+        const partialRefs1 = [
+          makeReference(uri(10.15), 10, 15),
+          makeReference(uri(15.20), 15, 20),
+        ];
+        partialRefs1[1].markAsNonIndependent();
+
+        const partialRefs2 = [
+          makeReference(uri(20.25), 20, 25),
+          makeReference(uri(25.30), 25, 30),
+          makeReference(uri(30.35), 30, 35),
+          makeReference(uri(35.40), 35, 40),
+          makeReference(uri(40.45), 40, 45),
+          makeReference(uri(45.50), 45, 50),
+          makeReference(uri(50.55), 50, 55),
+          makeReference(uri(55.60), 55, 60),
+          makeReference(uri(60.65), 60, 65),
+          makeReference(uri(65.70), 65, 70),
+        ];
+        // All but the first:
+        for (const r of partialRefs2.slice(1)) {
+          r.markAsNonIndependent();
+        }
+
+        const localInputRefs = [
+          makeReference(uri(0.10), 0, 10),
+          makeReference(uri(10.20), 10, 20, partialRefs1),
+          makeReference(uri(20.70), 20, 70, partialRefs2),
+        ];
+        const index = new shaka.media.SegmentIndex(localInputRefs);
+
+        // This time points to partialRefs1[0], which is independent.
+        const iterator1 = index.getIteratorForTime(11);
+        expect(iterator1.next().value).toBe(partialRefs1[0]);
+
+        // Even though the time would point to partialRefs1[1], that is not
+        // independent.  So it walks back to partialRefs1[0].
+        const iterator2 = index.getIteratorForTime(16);
+        expect(iterator2.next().value).toBe(partialRefs1[0]);
+
+        // Even though the time would point to partialRefs2[9], that is not
+        // independent.  So it walks all the way back to partialRefs2[0].
+        const iterator3 = index.getIteratorForTime(69);
+        expect(iterator3.next().value).toBe(partialRefs2[0]);
+      });
+    });
+
     describe('next', () => {
       it('starts with the first segment', () => {
         const index = new shaka.media.SegmentIndex(inputRefs);
@@ -974,9 +1026,9 @@ describe('SegmentIndex', /** @suppress {accessControls} */ () => {
           return [newRefs.shift()];
         });
       });
-      // Wait long enough for all three new refs to be appended.
-      // Or for all of the new refs to be passed out.
-      await Promise.race([shaka.test.Util.delay(1), done]);
+
+      // Wait for the new refs to be appended.
+      await done;
 
       expect(Array.from(metaIndex)).toEqual(oldRefs.concat(inputRefs2));
     });
@@ -1002,11 +1054,11 @@ describe('SegmentIndex', /** @suppress {accessControls} */ () => {
    * @param {number} startTime
    * @param {number} endTime
    * @param {!Array.<!shaka.media.SegmentReference>=} partialReferences
-   * @param {?shaka.extern.HlsAes128Key=} hlsAes128Key
+   * @param {?shaka.extern.aes128Key=} aes128Key
    * @return {shaka.media.SegmentReference}
    */
   function makeReference(uri, startTime, endTime, partialReferences = [],
-      hlsAes128Key = null) {
+      aes128Key = null) {
     return new shaka.media.SegmentReference(
         startTime,
         endTime,
@@ -1022,6 +1074,7 @@ describe('SegmentIndex', /** @suppress {accessControls} */ () => {
         /* tileDuration= */ undefined,
         /* syncTime= */ undefined,
         /* status= */ undefined,
-        /* hlsAes128Key= */ hlsAes128Key);
+        /* aes128Key= */ aes128Key,
+        /* allPartialSegments= */ partialReferences.length > 0);
   }
 });

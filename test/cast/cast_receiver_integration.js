@@ -65,7 +65,7 @@ filterDescribe('CastReceiver', castReceiverIntegrationSupport, () => {
     support = await shaka.media.DrmEngine.probeSupport();
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     mockReceiverApi = createMockReceiverApi();
 
     const mockCanDisplayType = jasmine.createSpy('canDisplayType');
@@ -87,7 +87,8 @@ filterDescribe('CastReceiver', castReceiverIntegrationSupport, () => {
 
     document.body.appendChild(video);
 
-    player = new shaka.Player(video);
+    player = new shaka.Player();
+    await player.attach(video);
     receiver = new CastReceiver(video, player);
 
     toRestore = [];
@@ -137,6 +138,53 @@ filterDescribe('CastReceiver', castReceiverIntegrationSupport, () => {
       Object.defineProperty(window['navigator'],
           'userAgent', {value: originalUserAgent});
     }
+  });
+
+  describe('state changed event', () => {
+    it('does not trigger a stack overflow', async () => {
+      const p = waitForLoadedData();
+
+      // We had a regression in which polling attributes eventually triggered a
+      // stack overflow because of a state change event that fired every time
+      // we checked the state.  The error itself got swallowed and hidden
+      // inside CastReceiver, but would cause tests to disconnect in some
+      // environments (consistently in GitHub Actions VMs, inconsistently
+      // elsewhere).
+      //
+      // Testing for this is subtle: if we try to catch the error, it will be
+      // caught at a point when the stack has already or is about to overflow.
+      // Then if we call "fail", Jasmine will grow the stack further,
+      // triggering *another* overflow inside of fail(), causing our test to
+      // *pass*.  So we need to fail fast.  The best way I have found is to
+      // catch the very first recursion of pollAttributes_, long before we
+      // overflow, fail, then return early to avoid the actual recursion.
+      const original = /** @type {?} */(receiver).pollAttributes_;
+      let numRecursions = 0;
+      // eslint-disable-next-line no-restricted-syntax
+      /** @type {?} */(receiver).pollAttributes_ = function() {
+        try {
+          if (numRecursions > 0) {
+            fail('Found recursion in pollAttributes_!');
+            return undefined;
+          }
+
+          numRecursions++;
+          return original.apply(receiver, arguments);
+        } finally {
+          numRecursions--;
+        }
+      };
+
+      // Start the process of loading by sending a fake init message.
+      fakeConnectedSenders(1);
+      fakeIncomingMessage({
+        type: 'init',
+        initState: fakeInitState,
+        appData: {},
+      }, mockShakaMessageBus);
+
+      await p;
+    });
   });
 
   describe('without drm', () => {
@@ -273,8 +321,6 @@ filterDescribe('CastReceiver', castReceiverIntegrationSupport, () => {
     // Add wrappers to various methods along player.load to make sure that,
     // at each stage, the cast receiver can form an update message without
     // causing an error.
-    waitForUpdateMessageWrapper(
-        shaka.media.ManifestParser, 'ManifestParser', 'getFactory');
     waitForUpdateMessageWrapper(
         // eslint-disable-next-line no-restricted-syntax
         shaka.test.TestScheme.ManifestParser.prototype, 'ManifestParser',

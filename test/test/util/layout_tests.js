@@ -43,9 +43,10 @@ shaka.test.LayoutTests = class {
       });
     });
 
-    // Wait one extra tick to make sure the font rendering on the page has been
-    // updated.  Without this, we saw some rare test flake in Firefox on Mac.
-    await shaka.test.Util.shortDelay();
+    // Wait one extra second to make sure the font rendering on the page has
+    // been updated.  Without this, we saw some rare test flake in Firefox on
+    // Mac.
+    await shaka.test.Util.delay(1);
   }
 
   /**
@@ -394,7 +395,7 @@ shaka.test.NativeTextLayoutTests = class extends shaka.test.TextLayoutTests {
     // The this.video must be played a little now, after the cues were appended,
     // but before the screenshot.
     this.video.playbackRate = 1;
-    this.video.play();
+    await this.video.play();
     await this.waiter.failOnTimeout(false).timeoutAfter(5)
         .waitForMovement(this.video);
     this.video.pause();
@@ -403,7 +404,7 @@ shaka.test.NativeTextLayoutTests = class extends shaka.test.TextLayoutTests {
     this.video.currentTime = time;
     // Get into a playing state, but without movement.
     this.video.playbackRate = 0;
-    this.video.play();
+    await this.video.play();
 
     // Add a short delay to ensure that the system has caught up and that
     // native text displayers have been updated by the browser.

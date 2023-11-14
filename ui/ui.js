@@ -229,6 +229,8 @@ shaka.ui.Overlay = class {
         buffered: 'rgba(255, 255, 255, 0.54)',
         played: 'rgb(255, 255, 255)',
         adBreaks: 'rgb(255, 204, 0)',
+        chapterMarks: 'rgb(27, 27, 27)',
+        chapterLabels: 'rgb(255, 255, 255)',
       },
       volumeBarColors: {
         base: 'rgba(255, 255, 255, 0.54)',
@@ -243,11 +245,16 @@ shaka.ui.Overlay = class {
       forceLandscapeOnFullscreen: true,
       enableTooltips: false,
       keyboardSeekDistance: 5,
+      keyboardLargeSeekDistance: 60,
       fullScreenElement: this.videoContainer_,
+      preferDocumentPictureInPicture: true,
+      showAudioChannelCountVariants: true,
     };
 
-    // Check AirPlay support
-    if (window.WebKitPlaybackTargetAvailabilityEvent) {
+    // eslint-disable-next-line no-restricted-syntax
+    if ('remote' in HTMLMediaElement.prototype) {
+      config.overflowMenuButtons.push('remote');
+    } else if (window.WebKitPlaybackTargetAvailabilityEvent) {
       config.overflowMenuButtons.push('airplay');
     }
 
@@ -421,8 +428,7 @@ shaka.ui.Overlay = class {
    */
   static async setupUIandAutoLoad_(container, video, canvas) {
     // Create the UI
-    const player = new shaka.Player(
-        shaka.util.Dom.asHTMLMediaElement(video));
+    const player = new shaka.Player();
     const ui = new shaka.ui.Overlay(player,
         shaka.util.Dom.asHTMLElement(container),
         shaka.util.Dom.asHTMLMediaElement(video));
@@ -485,6 +491,8 @@ shaka.ui.Overlay = class {
         shaka.log.error('Error auto-loading asset', e);
       }
     }
+
+    await player.attach(shaka.util.Dom.asHTMLMediaElement(video));
   }
 };
 

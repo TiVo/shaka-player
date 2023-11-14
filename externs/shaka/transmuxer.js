@@ -37,7 +37,7 @@ shaka.extern.Transmuxer = class {
    * Returns the original mimetype of the transmuxer.
    * @return {string}
    */
-  getOrginalMimeType() {}
+  getOriginalMimeType() {}
 
   /**
    * Transmux a input data to MP4.
@@ -45,9 +45,11 @@ shaka.extern.Transmuxer = class {
    * @param {shaka.extern.Stream} stream
    * @param {?shaka.media.SegmentReference} reference The segment reference, or
    *   null for init segments
+   * @param {number} duration
+   * @param {string} contentType
    * @return {!Promise.<!Uint8Array>}
    */
-  transmux(data, stream, reference) {}
+  transmux(data, stream, reference, duration, contentType) {}
 };
 
 

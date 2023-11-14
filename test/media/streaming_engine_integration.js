@@ -57,6 +57,9 @@ describe('StreamingEngine', () => {
   beforeEach(() => {
     config = shaka.util.PlayerConfiguration.createDefault().streaming;
 
+    // Disable stall detection, which can interfere with playback tests.
+    config.stallEnabled = false;
+
     onError = jasmine.createSpy('onError');
     onError.and.callFake(fail);
     onEvent = jasmine.createSpy('onEvent');
@@ -263,6 +266,7 @@ describe('StreamingEngine', () => {
       onInitSegmentAppended: () => {},
       beforeAppendSegment: () => Promise.resolve(),
       onMetadata: () => {},
+      disableStream: (stream, time) => false,
     };
     streamingEngine = new shaka.media.StreamingEngine(
         /** @type {shaka.extern.Manifest} */(manifest), playerInterface);
@@ -278,7 +282,7 @@ describe('StreamingEngine', () => {
       // Let's go!
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
-      video.play();
+      await video.play();
       // The overall test timeout is 120 seconds, and the content is 40
       // seconds.  It should be possible to complete this test in 100 seconds,
       // and if not, we want the error thrown to be within the overall test's
@@ -298,7 +302,7 @@ describe('StreamingEngine', () => {
       // Let's go!
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
-      video.play();
+      await video.play();
 
       // Wait for playback to begin before increasing the playback rate.  This
       // improves test reliability on slow platforms like Chromecast.
@@ -312,7 +316,7 @@ describe('StreamingEngine', () => {
       // Let's go!
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
-      video.play();
+      await video.play();
 
       // After 35 seconds seek back 10 seconds into the first Period.
       await waiter.timeoutAfter(80).waitUntilPlayheadReaches(video, 35);
@@ -324,7 +328,7 @@ describe('StreamingEngine', () => {
       // Let's go!
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
-      video.play();
+      await video.play();
       await waiter.timeoutAfter(60).waitUntilPlayheadReaches(video, 20);
       video.currentTime = 40;
       await waiter.timeoutAfter(60).waitForEnd(video);
@@ -352,7 +356,7 @@ describe('StreamingEngine', () => {
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
 
-      video.play();
+      await video.play();
       await waiter.timeoutAfter(60).waitUntilPlayheadReaches(video, 305);
 
       const segmentType = shaka.net.NetworkingEngine.RequestType.SEGMENT;
@@ -375,7 +379,7 @@ describe('StreamingEngine', () => {
       // Seek outside the availability window right away. The playhead
       // should adjust the video's current time.
       video.currentTime = segmentAvailability.end + 120;
-      video.play();
+      await video.play();
 
       // Wait until the repositioning is complete so we don't
       // immediately hit this case.
@@ -400,7 +404,7 @@ describe('StreamingEngine', () => {
       video.currentTime = segmentAvailability.start - 120;
       expect(video.currentTime).toBeGreaterThan(0);
 
-      video.play();
+      await video.play();
       await waiter.timeoutAfter(60).waitUntilPlayheadReaches(video, 305);
 
       // We are playing close to the beginning of the availability window.
@@ -428,7 +432,7 @@ describe('StreamingEngine', () => {
       // Let's go!
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
-      video.play();
+      await video.play();
 
       await waiter.timeoutAfter(5).waitUntilPlayheadReaches(video, 0.01);
       expect(video.buffered.length).toBeGreaterThan(0);
@@ -443,7 +447,7 @@ describe('StreamingEngine', () => {
       // Let's go!
       streamingEngine.switchVariant(variant);
       await streamingEngine.start();
-      video.play();
+      await video.play();
 
       await waiter.timeoutAfter(5).waitUntilPlayheadReaches(video, 0.01);
       expect(video.buffered.length).toBeGreaterThan(0);
@@ -462,7 +466,7 @@ describe('StreamingEngine', () => {
       await waiter.timeoutAfter(5).waitForEvent(video, 'loadeddata');
 
       video.currentTime = 8;
-      video.play();
+      await video.play();
 
       await waiter.timeoutAfter(60).waitUntilPlayheadReaches(video, 23);
       // Should be close enough to still have the gap buffered.
@@ -479,7 +483,7 @@ describe('StreamingEngine', () => {
       await waiter.timeoutAfter(5).waitForEvent(video, 'loadeddata');
 
       video.currentTime = 8;
-      video.play();
+      await video.play();
 
       await waiter.timeoutAfter(60).waitUntilPlayheadReaches(video, 23);
       // Should be close enough to still have the gap buffered.
@@ -596,6 +600,7 @@ describe('StreamingEngine', () => {
         sequenceMode: false,
         ignoreManifestTimestampsInSegmentsMode: false,
         type: 'UNKNOWN',
+        serviceDescription: null,
         variants: [{
           id: 1,
           video: {

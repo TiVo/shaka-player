@@ -77,6 +77,8 @@ describe('HlsParser live', () => {
       enableLowLatencyMode: () => {},
       updateDuration: () => {},
       newDrmInfo: (stream) => {},
+      onManifestUpdated: () => {},
+      getBandwidthEstimate: () => 1e6,
     };
 
     parser = new shaka.hls.HlsParser();
@@ -87,6 +89,15 @@ describe('HlsParser live', () => {
     // HLS parser stop is synchronous.
     parser.stop();
   });
+
+  /**
+   * Gets a spy on the function that sets the update period.
+   * @return {!jasmine.Spy}
+   * @suppress {accessControls}
+   */
+  function updateTickSpy() {
+    return spyOn(parser.updatePlaylistTimer_, 'tickAfter');
+  }
 
   /**
    * Trigger a manifest update.
@@ -332,6 +343,34 @@ describe('HlsParser live', () => {
         expect(notifySegmentsSpy).toHaveBeenCalled();
       });
 
+      it('fatal error on manifest update request failure when ' +
+          'raiseFatalErrorOnManifestUpdateRequestFailure is true', async () => {
+        const manifestConfig =
+        shaka.util.PlayerConfiguration.createDefault().manifest;
+        manifestConfig.raiseFatalErrorOnManifestUpdateRequestFailure = true;
+        parser.configure(manifestConfig);
+
+        const updateTick = updateTickSpy();
+
+        await testInitialManifest(master, media);
+        expect(updateTick).toHaveBeenCalledTimes(1);
+
+        /** @type {!jasmine.Spy} */
+        const onError = jasmine.createSpy('onError');
+        playerInterface.onError = shaka.test.Util.spyFunc(onError);
+
+        const error = new shaka.util.Error(
+            shaka.util.Error.Severity.CRITICAL,
+            shaka.util.Error.Category.NETWORK,
+            shaka.util.Error.Code.BAD_HTTP_STATUS);
+        const operation = shaka.util.AbortableOperation.failed(error);
+        fakeNetEngine.request.and.returnValue(operation);
+
+        await delayForUpdatePeriod();
+        expect(onError).toHaveBeenCalledWith(error);
+        expect(updateTick).toHaveBeenCalledTimes(1);
+      });
+
       it('converts to VOD only after all playlists end', async () => {
         const master = [
           '#EXTM3U\n',
@@ -503,9 +542,60 @@ describe('HlsParser live', () => {
 
     it('sets 3 times target duration as presentation delay if not configured',
         async () => {
+          const media = [
+            '#EXTM3U\n',
+            '#EXT-X-TARGETDURATION:5\n',
+            '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
+            '#EXT-X-MEDIA-SEQUENCE:0\n',
+            '#EXTINF:2,\n',
+            'main.mp4\n',
+            '#EXTINF:2,\n',
+            'main.mp4\n',
+            '#EXTINF:2,\n',
+            'main.mp4\n',
+            '#EXTINF:2,\n',
+            'main.mp4\n',
+            '#EXTINF:2,\n',
+            'main.mp4\n',
+            '#EXTINF:2,\n',
+            'main.mp4\n',
+          ].join('');
           const manifest = await testInitialManifest(master, media);
           expect(manifest.presentationTimeline.getDelay()).toBe(15);
         });
+
+    it('sets 1 times target duration as presentation delay if there are not enough segments', async () => { // eslint-disable-line max-len
+      const media = [
+        '#EXTM3U\n',
+        '#EXT-X-TARGETDURATION:5\n',
+        '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
+        '#EXT-X-MEDIA-SEQUENCE:0\n',
+        '#EXTINF:2,\n',
+        'main.mp4\n',
+        '#EXTINF:2,\n',
+        'main.mp4\n',
+      ].join('');
+      const manifest = await testInitialManifest(master, media);
+      expect(manifest.presentationTimeline.getDelay()).toBe(5);
+    });
+
+    it('sets presentation delay if defined', async () => {
+      const media = [
+        '#EXTM3U\n',
+        '#EXT-X-SERVER-CONTROL:HOLD-BACK=2\n',
+        '#EXT-X-TARGETDURATION:5\n',
+        '#EXT-X-PART-INF:PART-TARGET=0.5\n',
+        '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
+        '#EXT-X-MEDIA-SEQUENCE:0\n',
+        '#EXTINF:2,\n',
+        'main.mp4\n',
+      ].join('');
+
+      const manifest = await testInitialManifest(master, media);
+      // Presentation delay should be the value of 'HOLD-BACK' if not
+      // configured.
+      expect(manifest.presentationTimeline.getDelay()).toBe(2);
+    });
 
     it('sets presentation delay for low latency mode', async () => {
       const mediaWithLowLatency = [
@@ -579,42 +669,50 @@ describe('HlsParser live', () => {
         '#EXTM3U\n',
         '#EXT-X-TARGETDURATION:5\n',
         '#EXT-X-PART-INF:PART-TARGET=1.5\n',
-        '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
+        '#EXT-X-MAP:URI="init.mp4"\n',
         '#EXT-X-MEDIA-SEQUENCE:0\n',
         // ref includes partialRef, partialRef2
         // partialRef
-        '#EXT-X-PART:DURATION=2,URI="partial.mp4",BYTERANGE=200@0\n',
+        '#EXT-X-PART:DURATION=2,URI="partial.mp4",INDEPENDENT=YES\n',
         // partialRef2
-        '#EXT-X-PART:DURATION=2,URI="partial2.mp4",BYTERANGE=230@200\n',
+        '#EXT-X-PART:DURATION=2,URI="partial2.mp4",INDEPENDENT=YES\n',
         '#EXTINF:4,\n',
         'main.mp4\n',
         // ref2 includes partialRef3, preloadRef
         // partialRef3
-        '#EXT-X-PART:DURATION=2,URI="partial.mp4",BYTERANGE=210@0\n',
+        '#EXT-X-PART:DURATION=2,URI="partial.mp4",INDEPENDENT=YES\n',
         // preloadRef
-        '#EXT-X-PRELOAD-HINT:TYPE=PART,URI="partial.mp4",BYTERANGE-START=210\n',
+        '#EXT-X-PRELOAD-HINT:TYPE=PART,URI="partial.mp4"\n',
       ].join('');
 
       const partialRef = makeReference(
           'test:/partial.mp4', 0, 2, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 199);
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null);
+      partialRef.partial = true;
 
       const partialRef2 = makeReference(
           'test:/partial2.mp4', 2, 4, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 200, /* endByte= */ 429);
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null);
+      partialRef2.partial = true;
+      partialRef2.lastPartial = true;
 
       const ref = makeReference(
           'test:/main.mp4', 0, 4, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 429,
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null,
           /* timestampOffset= */ 0, [partialRef, partialRef2]);
+      ref.allPartialSegments = true;
 
       const partialRef3 = makeReference(
           'test:/partial.mp4', 4, 6, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 209);
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null);
+      partialRef3.partial = true;
 
       const preloadRef = makeReference(
           'test:/partial.mp4', 6, 7.5, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 210, /* endByte= */ null);
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null);
+      preloadRef.partial = true;
+      preloadRef.markAsPreload();
+      preloadRef.markAsNonIndependent();
 
       // ref2 is not fully published yet, so it doesn't have a segment uri.
       const ref2 = makeReference(
@@ -623,6 +721,86 @@ describe('HlsParser live', () => {
           /* timestampOffset= */ 0, [partialRef3, preloadRef]);
 
       await testInitialManifest(master, mediaWithPartialSegments, [ref, ref2]);
+    });
+
+    it('parses streams with partial and preload hinted segments and BYTERANGE', async () => { // eslint-disable-line max-len
+      playerInterface.isLowLatencyMode = () => true;
+      const mediaWithPartialSegments = [
+        '#EXTM3U\n',
+        '#EXT-X-TARGETDURATION:5\n',
+        '#EXT-X-PART-INF:PART-TARGET=1.5\n',
+        '#EXT-X-MAP:URI="init.mp4"\n',
+        '#EXT-X-MEDIA-SEQUENCE:0\n',
+        // ref includes partialRef, partialRef2
+        // partialRef
+        '#EXT-X-PART:DURATION=2,URI="ref1.mp4",BYTERANGE=200@0,',
+        'INDEPENDENT=YES\n',
+        // partialRef2
+        '#EXT-X-PART:DURATION=2,URI="ref1.mp4",BYTERANGE=230@200,',
+        'INDEPENDENT=YES\n',
+        '#EXTINF:4,\n',
+        'ref1.mp4\n',
+        // ref2 includes partialRef3, preloadRef
+        // partialRef3
+        '#EXT-X-PART:DURATION=2,URI="ref2.mp4",BYTERANGE=210@0,',
+        'INDEPENDENT=YES\n',
+        // preloadRef
+        '#EXT-X-PRELOAD-HINT:TYPE=PART,URI="ref2.mp4",BYTERANGE-START=210,',
+        'BYTERANGE-LENGTH=210\n',
+      ].join('');
+
+      // If ReadableStream is defined we can apply some optimizations
+      if (window.ReadableStream) {
+        const ref = makeReference(
+            'test:/ref1.mp4', 0, 4, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null,
+            /* timestampOffset= */ 0);
+        ref.markAsByterangeOptimization();
+
+        // ref2 is not fully published yet, so it doesn't have a segment uri.
+        const ref2 = makeReference(
+            'test:/ref2.mp4', 4, 7.5, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null,
+            /* timestampOffset= */ 0);
+        ref2.markAsByterangeOptimization();
+        ref2.markAsPreload();
+
+        await testInitialManifest(master, mediaWithPartialSegments,
+            [ref, ref2]);
+      } else {
+        const partialRef = makeReference(
+            'test:/ref1.mp4', 0, 2, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 199);
+
+        const partialRef2 = makeReference(
+            'test:/ref1.mp4', 2, 4, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 200, /* endByte= */ 429);
+
+        const ref = makeReference(
+            'test:/ref1.mp4', 0, 4, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 429,
+            /* timestampOffset= */ 0, [partialRef, partialRef2]);
+        ref.allPartialSegments = true;
+
+        const partialRef3 = makeReference(
+            'test:/ref2.mp4', 4, 6, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 209);
+
+        const preloadRef = makeReference(
+            'test:/ref2.mp4', 6, 7.5, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 210, /* endByte= */ 419);
+        preloadRef.markAsPreload();
+        preloadRef.markAsNonIndependent();
+
+        // ref2 is not fully published yet, so it doesn't have a segment uri.
+        const ref2 = makeReference(
+            '', 4, 7.5, /* syncTime= */ null,
+            /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 419,
+            /* timestampOffset= */ 0, [partialRef3, preloadRef]);
+
+        await testInitialManifest(master, mediaWithPartialSegments,
+            [ref, ref2]);
+      }
     });
 
     // Test for https://github.com/shaka-project/shaka-player/issues/4223
@@ -640,9 +818,9 @@ describe('HlsParser live', () => {
         'main.mp4\n',
         // ref2 includes partialRef, but not preloadRef
         // partialRef
-        '#EXT-X-PART:DURATION=2,URI="partial.mp4",BYTERANGE=210@0\n',
+        '#EXT-X-PART:DURATION=2,URI="partial.mp4",INDEPENDENT=YES\n',
         // preloadRef
-        '#EXT-X-PRELOAD-HINT:TYPE=PART,URI="partial.mp4",BYTERANGE-START=210\n',
+        '#EXT-X-PRELOAD-HINT:TYPE=PART,URI="partial.mp4"\n',
       ].join('');
 
       const ref = makeReference(
@@ -652,12 +830,12 @@ describe('HlsParser live', () => {
 
       const partialRef = makeReference(
           'test:/partial.mp4', 4, 6, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 209);
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null);
 
       // ref2 is not fully published yet, so it doesn't have a segment uri.
       const ref2 = makeReference(
           '', 4, 6, /* syncTime= */ null,
-          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ 209,
+          /* baseUri= */ '', /* startByte= */ 0, /* endByte= */ null,
           /* timestampOffset= */ 0, [partialRef]);
 
       await testInitialManifest(master, mediaWithPartialSegments, [ref, ref2]);
@@ -796,9 +974,11 @@ describe('HlsParser live', () => {
             'test:/main.mp4', 0, 2, /* syncTime= */ null);
 
         const newRef1 = makeReference(
-            'test:/redirected/main.mp4', 0, 2, /* syncTime= */ null);
+            ['test:/redirected/main.mp4', 'test:/main.mp4'],
+            0, 2, /* syncTime= */ null);
         const newRef2 = makeReference(
-            'test:/redirected/main2.mp4', 2, 4, /* syncTime= */ null);
+            ['test:/redirected/main2.mp4', 'test:/main2.mp4'],
+            2, 4, /* syncTime= */ null);
 
         let playlistFetchCount = 0;
 
@@ -858,38 +1038,57 @@ describe('HlsParser live', () => {
           '#EXT-X-TARGETDURATION:5\n',
           '#EXT-X-MEDIA-SEQUENCE:0\n',
           '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
-          '#EXT-X-SERVER-CONTROL:CAN-SKIP-UNTIL=60.0\n',
+          '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,CAN-SKIP-UNTIL=60.0,\n',
           '#EXTINF:2,\n',
-          'main.mp4\n',
+          'main0.mp4\n',
+          '#EXTINF:2,\n',
+          'main1.mp4\n',
+        ].join('');
+
+        const mediaWithSkippedSegments1 = [
+          '#EXTM3U\n',
+          '#EXT-X-TARGETDURATION:5\n',
+          '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
+          '#EXT-X-MEDIA-SEQUENCE:1\n',
+          '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,CAN-SKIP-UNTIL=60.0,\n',
+          '#EXT-X-SKIP:SKIPPED-SEGMENTS=1\n',
           '#EXTINF:2,\n',
           'main2.mp4\n',
         ].join('');
 
-        const mediaWithSkippedSegments = [
+        const mediaWithSkippedSegments2 = [
           '#EXTM3U\n',
           '#EXT-X-TARGETDURATION:5\n',
           '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
-          '#EXT-X-MEDIA-SEQUENCE:0\n',
-          '#EXT-X-SERVER-CONTROL:CAN-SKIP-UNTIL=60.0\n',
+          '#EXT-X-MEDIA-SEQUENCE:2\n',
+          '#EXT-X-SERVER-CONTROL:CAN-BLOCK-RELOAD=YES,CAN-SKIP-UNTIL=60.0,\n',
           '#EXT-X-SKIP:SKIPPED-SEGMENTS=1\n',
-          '#EXTINF:2,\n',
-          'main2.mp4\n',
           '#EXTINF:2,\n',
           'main3.mp4\n',
         ].join('');
 
         fakeNetEngine.setResponseText(
-            'test:/video?_HLS_skip=YES', mediaWithSkippedSegments);
+            'test:/video?_HLS_msn=2&_HLS_skip=YES', mediaWithSkippedSegments1);
+
+        fakeNetEngine.setResponseText(
+            'test:/video?_HLS_msn=3&_HLS_skip=YES', mediaWithSkippedSegments2);
 
         playerInterface.isLowLatencyMode = () => true;
 
         await testInitialManifest(master, mediaWithDeltaUpdates);
 
         fakeNetEngine.request.calls.reset();
-        await delayForUpdatePeriod();
 
+        await delayForUpdatePeriod();
         fakeNetEngine.expectRequest(
-            'test:/video?_HLS_skip=YES',
+            'test:/video?_HLS_msn=2&_HLS_skip=YES',
+            shaka.net.NetworkingEngine.RequestType.MANIFEST,
+            {type:
+              shaka.net.NetworkingEngine.AdvancedRequestType.MEDIA_PLAYLIST});
+
+        await delayForUpdatePeriod();
+        fakeNetEngine.expectRequest(
+            'test:/video?_HLS_msn=3&_HLS_skip=YES',
             shaka.net.NetworkingEngine.RequestType.MANIFEST,
             {type:
               shaka.net.NetworkingEngine.AdvancedRequestType.MEDIA_PLAYLIST});
@@ -1111,7 +1310,7 @@ describe('HlsParser live', () => {
   });  // describe('playlist type LIVE')
 
   /**
-   * @param {string} uri A relative URI to http://example.com
+   * @param {string|Array.<string>} uri A relative URI to http://example.com
    * @param {number} start
    * @param {number} end
    * @param {?number} syncTime

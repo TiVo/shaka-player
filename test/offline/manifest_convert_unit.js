@@ -298,11 +298,13 @@ describe('ManifestConverter', () => {
     const streamDB = {
       id,
       originalId: id.toString(),
+      groupId: null,
       primary: false,
       type,
       mimeType: '',
       codecs: '',
       language: '',
+      originalLanguage: null,
       label: null,
       width: null,
       height: null,
@@ -316,6 +318,8 @@ describe('ManifestConverter', () => {
       audioSamplingRate: null,
       spatialAudio: false,
       closedCaptions: null,
+      external: false,
+      fastSwitching: false,
     };
 
     return streamDB;
@@ -353,6 +357,7 @@ describe('ManifestConverter', () => {
     return {
       id,
       originalId: id.toString(),
+      groupId: null,
       primary: false,
       type: ContentType.VIDEO,
       mimeType: 'video/mp4',
@@ -360,8 +365,10 @@ describe('ManifestConverter', () => {
       frameRate: 22,
       pixelAspectRatio: '59:54',
       hdr: undefined,
+      videoLayout: undefined,
       kind: undefined,
       language: '',
+      originalLanguage: null,
       label: null,
       width: 250,
       height: 100,
@@ -389,6 +396,9 @@ describe('ManifestConverter', () => {
       spatialAudio: false,
       closedCaptions: null,
       tilesLayout: undefined,
+      accessibilityPurpose: null,
+      external: false,
+      fastSwitching: false,
     };
   }
 
@@ -402,6 +412,7 @@ describe('ManifestConverter', () => {
     return {
       id,
       originalId: id.toString(),
+      groupId: null,
       primary: false,
       type: ContentType.AUDIO,
       mimeType: 'audio/mp4',
@@ -409,8 +420,10 @@ describe('ManifestConverter', () => {
       frameRate: undefined,
       pixelAspectRatio: undefined,
       hdr: undefined,
+      videoLayout: undefined,
       kind: undefined,
       language: 'en',
+      originalLanguage: 'en',
       label: null,
       width: null,
       height: null,
@@ -438,6 +451,9 @@ describe('ManifestConverter', () => {
       spatialAudio: false,
       closedCaptions: null,
       tilesLayout: undefined,
+      accessibilityPurpose: null,
+      external: false,
+      fastSwitching: false,
     };
   }
 
@@ -450,6 +466,7 @@ describe('ManifestConverter', () => {
     return {
       id,
       originalId: id.toString(),
+      groupId: null,
       primary: false,
       type: ContentType.TEXT,
       mimeType: 'text/vtt',
@@ -457,8 +474,10 @@ describe('ManifestConverter', () => {
       frameRate: undefined,
       pixelAspectRatio: undefined,
       hdr: undefined,
+      videoLayout: undefined,
       kind: undefined,
       language: 'en',
+      originalLanguage: 'en',
       label: null,
       width: null,
       height: null,
@@ -486,6 +505,9 @@ describe('ManifestConverter', () => {
       spatialAudio: false,
       closedCaptions: null,
       tilesLayout: undefined,
+      accessibilityPurpose: null,
+      external: false,
+      fastSwitching: false,
     };
   }
 
@@ -505,6 +527,7 @@ describe('ManifestConverter', () => {
     const expectedStream = {
       id: jasmine.any(Number),
       originalId: jasmine.any(String),
+      groupId: streamDb.groupId,
       createSegmentIndex: jasmine.any(Function),
       segmentIndex: jasmine.any(shaka.media.SegmentIndex),
       mimeType: streamDb.mimeType,
@@ -512,6 +535,7 @@ describe('ManifestConverter', () => {
       frameRate: streamDb.frameRate,
       pixelAspectRatio: streamDb.pixelAspectRatio,
       hdr: streamDb.hdr,
+      videoLayout: streamDb.videoLayout,
       width: streamDb.width || undefined,
       height: streamDb.height || undefined,
       kind: streamDb.kind,
@@ -519,6 +543,7 @@ describe('ManifestConverter', () => {
       encrypted: streamDb.encrypted,
       keyIds: streamDb.keyIds,
       language: streamDb.language,
+      originalLanguage: streamDb.originalLanguage,
       label: streamDb.label,
       type: streamDb.type,
       primary: streamDb.primary,
@@ -531,6 +556,9 @@ describe('ManifestConverter', () => {
       spatialAudio: streamDb.spatialAudio,
       closedCaptions: streamDb.closedCaptions,
       tilesLayout: streamDb.tilesLayout,
+      accessibilityPurpose: null,
+      external: streamDb.external,
+      fastSwitching: streamDb.fastSwitching,
     };
 
     expect(stream).toEqual(expectedStream);
