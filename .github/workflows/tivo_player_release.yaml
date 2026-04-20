@@ -1,0 +1,63 @@
+name: Player Release
+
+on:
+  push:
+    tags:
+      - 'tivo-v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Tag is like "tivo-v4.16.13" → version "4.16.13"
+          TAG_NAME="${GITHUB_REF_NAME}"
+          VERSION="${TAG_NAME#tivo-v}"
+          TIMESTAMP=$(date +%s)
+          RELEASE_TAG="v${VERSION}-alpha.tivo.${TIMESTAMP}"
+          RELEASE_TITLE="Inception ${TIMESTAMP}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_TITLE=${RELEASE_TITLE}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: python3 build/all.py --force
+
+      - name: Package dist artifacts
+        run: tar -czf shaka-player-dist.tgz dist/
+
+      - name: Create npm tarball
+        run: npm pack --ignore-scripts
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.RELEASE_TAG }}" \
+            shaka-player-dist.tgz \
+            shaka-player-*.tgz \
+            --target "${{ github.sha }}" \
+            --title "${{ steps.version.outputs.RELEASE_TITLE }}" \
+            --generate-notes
