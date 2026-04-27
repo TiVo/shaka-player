@@ -220,8 +220,7 @@ describe('SeekBasedTrickPlayController', () => {
       // Start and immediately stop - not enough frames for correction.
       controller.start(4);
       controller.stop();
-      // With just one frame rendered, correction won't have enough data.
-      // It might return null if only one entry is in the buffer.
+      expect(controller.getOvershootCorrectionPosition()).toBe(null);
     });
 
     it('returns a position after many frames have rendered', () => {

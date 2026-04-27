@@ -7,6 +7,7 @@
 
 goog.provide('shaka.ui.SeekBar');
 
+goog.require('shaka.Player');
 goog.require('shaka.ads.Utils');
 goog.require('shaka.net.NetworkingEngine');
 goog.require('shaka.net.NetworkingUtils');
@@ -272,11 +273,16 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
     this.controls.setSeeking(true);
 
     const config = this.player.getConfiguration();
-    if (config.streaming && config.streaming.seekBasedTrickPlay &&
-        config.streaming.seekBasedTrickPlay.enabled) {
+    const scrubEnabled = !!(config.streaming &&
+        config.streaming.seekBasedTrickPlay &&
+        config.streaming.seekBasedTrickPlay.enabled);
+    const scrubSupported =
+        this.player.getLoadMode() == shaka.Player.LoadMode.MEDIA_SOURCE;
+    if (scrubEnabled && scrubSupported) {
       this.isScrubMode_ = true;
       this.player.startScrub();
     } else {
+      this.isScrubMode_ = false;
       this.video.pause();
     }
 
