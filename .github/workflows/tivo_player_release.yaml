@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build-and-release:
-    runs-on: runner-default-ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Determine version
         id: version
