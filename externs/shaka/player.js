@@ -1420,7 +1420,7 @@ shaka.extern.InitDataTransform;
  *
  * @property {!string} tagName
  *   The name of the element
- * @property {!object} attributes
+ * @property {!Object<string, string>} attributes
  *   The attributes of the element
  * @property {!Array<shaka.extern.xml.Node | string>} children
  *   The child nodes or string body of the element
@@ -2723,9 +2723,6 @@ shaka.extern.AdsConfiguration;
  *   trust the information provided by the browser.
  *   <br>
  *   Defaults to <code>false</code>.
- * @property {shaka.extern.DroppedFrameProtectionConfig} droppedFrameProtection
- *   Configuration for monitoring dropped frames and temporarily disabling
- *   streams that exceed a threshold.
  * @property {boolean} droppedFrames
  *   Enable or disable dropped frames protection.
  *   <br>

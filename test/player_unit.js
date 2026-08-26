@@ -1743,6 +1743,20 @@ describe('Player', () => {
       expect(abrManager.chooseVariant).toHaveBeenCalled();
     });
 
+    it('calls chooseVariant via PreloadManager', async () => {
+      // Regression test for #10045: when load() is given a PreloadManager
+      // with a prefetched variant, loadInner_ used to skip chooseVariant_,
+      // leaving the AbrManager uninitialized and breaking adaptation on
+      // subsequent loads on a reused Player.
+      const preloadManager = await player.preload(
+          fakeManifestUri, 0, fakeMimeType);
+      await preloadManager.waitForFinish();
+      // Reset so we only count calls from load(), not from preload().
+      abrManager.chooseVariant.calls.reset();
+      await player.load(preloadManager);
+      expect(abrManager.chooseVariant).toHaveBeenCalled();
+    });
+
     it('enables automatically', async () => {
       await player.load(fakeManifestUri, 0, fakeMimeType);
       expect(abrManager.enable).toHaveBeenCalled();
@@ -5136,6 +5150,60 @@ describe('Player', () => {
           height: 50,
         }));
       });
+
+      it('handles concurrent calls without closing the segmentIndex early',
+          async () => {
+            const uris = () => ['thumbnail'];
+            const ref = new shaka.media.SegmentReference(
+                0, 60, uris, 0, null, null, 0, 0, Infinity, [],
+            );
+            const index = new shaka.media.SegmentIndex([ref]);
+
+            manifest = shaka.test.ManifestGenerator.generate((manifest) => {
+              manifest.addVariant(0, (variant) => {
+                variant.addVideo(1);
+              });
+              manifest.addImageStream(5, (stream) => {
+                stream.originalId = 'thumbnail';
+                stream.width = 200;
+                stream.height = 150;
+                stream.mimeType = 'image/jpeg';
+                stream.tilesLayout = '2x3';
+                stream.segmentIndex = index;
+              });
+            });
+
+            const imageStream = manifest.imageStreams[0];
+            const closeSpy = jasmine.createSpy('closeSegmentIndex')
+                .and.callFake(() => {
+                  imageStream.segmentIndex = null;
+                });
+            imageStream.closeSegmentIndex =
+                shaka.test.Util.spyFunc(closeSpy);
+
+            await player.load(fakeManifestUri, 0, fakeMimeType);
+
+            jasmine.clock().install();
+            try {
+              // Two concurrent callers must both see the full set; the
+              // deferred close timer must not fire synchronously between
+              // them.
+              const [thumbs1, thumbs2] = await Promise.all([
+                player.getAllThumbnails(5),
+                player.getAllThumbnails(5),
+              ]);
+              expect(thumbs1.length).toBe(6);
+              expect(thumbs2.length).toBe(6);
+              expect(closeSpy).not.toHaveBeenCalled();
+
+              // Once the 5-second deferred-close timer elapses,
+              // closeSegmentIndex fires exactly once.
+              await shaka.test.Util.fakeEventLoop(6);
+              expect(closeSpy).toHaveBeenCalledTimes(1);
+            } finally {
+              jasmine.clock().uninstall();
+            }
+          });
     });
   });
 

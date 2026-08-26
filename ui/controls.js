@@ -325,6 +325,14 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
     /** @private {?number} */
     this.lastContainerTouchEventTime_ = null;
 
+    /**
+     * Set while a long-press is opening the custom context menu, so that the
+     * touchend which ends that same long-press does not immediately close the
+     * menu.  Reset on every touchstart and consumed by the next touchend.
+     * @private {boolean}
+     */
+    this.contextMenuOpenedByTouch_ = false;
+
     /** @private {!Array<!shaka.extern.IUIElement>} */
     this.elements_ = [];
 
@@ -614,8 +622,7 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
         'shaka-no-propagation');
     for (const element of noPropagationElements) {
       const cb = (event) => event.stopPropagation();
-      this.eventManager_.listen(element, 'click', cb);
-      this.eventManager_.listen(element, 'dblclick', cb);
+      this.eventManager_.listenMulti(element, ['click', 'dblclick'], cb);
       if (navigator.maxTouchPoints > 0) {
         const touchCb = (event) => {
           if (!this.isOpaque()) {
@@ -970,7 +977,12 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
    */
   isFullScreenEnabled() {
     if (this.shouldUseDocumentFullscreen_()) {
-      return !!document.fullscreenElement;
+      if (!document.fullscreenElement) {
+        return false;
+      }
+      return document.fullscreenElement == this.config_.fullScreenElement ||
+          Boolean(this.config_.fullScreenElement &&
+          this.config_.fullScreenElement.contains(document.fullscreenElement));
     }
     const video = /** @type {HTMLVideoElement} */(this.localVideo_);
     if (video.webkitSupportsFullscreen) {
@@ -1128,8 +1140,16 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
     placeholder.classList.add('shaka-video-container');
     placeholder.classList.add('pip-placeholder');
     const video = /** @type {HTMLVideoElement} */ (this.video_);
-    if (video?.poster) {
-      const posterDiv = document.createElement('div');
+    let posterDiv = null;
+    const updatePoster = () => {
+      if (posterDiv) {
+        posterDiv.remove();
+        posterDiv = null;
+      }
+      if (!video?.poster) {
+        return;
+      }
+      posterDiv = document.createElement('div');
       posterDiv.classList.add('pip-poster');
       posterDiv.style.backgroundImage = `url("${video.poster}")`;
       const videoWidth = video.videoWidth || video.clientWidth;
@@ -1138,10 +1158,23 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
       if (videoWidth && videoHeight) {
         posterDiv.style.setProperty('aspect-ratio',
             `${videoWidth} / ${videoHeight}`);
-        placeholder.appendChild(posterDiv);
       }
+      placeholder.prepend(posterDiv);
+    };
+
+    updatePoster();
+
+    const posterObserver = new MutationObserver(() => {
+      updatePoster();
+    });
+    if (video) {
+      posterObserver.observe(this.getLocalVideo(), {
+        attributes: true,
+        attributeFilter: ['poster'],
+      });
     }
-    const iconWrapper = document.createElement('div');
+
+    const iconWrapper = shaka.util.Dom.createHTMLElement('div');
     iconWrapper.classList.add('pip-icon-wrapper');
     placeholder.appendChild(iconWrapper);
     const pipIcon = (new shaka.ui.Icon(iconWrapper,
@@ -1166,6 +1199,7 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
 
     // Listen for the PiP closing event to move the player back.
     this.eventManager_.listenOnce(pipWindow, 'pagehide', () => {
+      posterObserver.disconnect();
       this.eventManager_.unlisten(pipIcon, 'click', pipAction);
       pipPlayer.classList.remove('pip-mode');
       placeholder.replaceWith(/** @type {!Node} */(pipPlayer));
@@ -1331,9 +1365,22 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
     // setEnabledShakaControls:
     this.videoContainer_.setAttribute('shaka-controls', 'true');
 
-    this.eventManager_.listen(this.controlsContainer_, 'touchend', (e) => {
-      this.onContainerTouch(e);
-    });
+    if (navigator.maxTouchPoints > 0) {
+      this.eventManager_.listen(this.controlsContainer_, 'touchstart', () => {
+        // A fresh touch starts a new gesture; forget any previous long-press
+        // that opened the context menu.
+        this.contextMenuOpenedByTouch_ = false;
+      });
+      this.eventManager_.listen(this.controlsContainer_, 'contextmenu', () => {
+        // A long-press fires 'contextmenu' while the finger is still down.
+        // Remember it so the touchend that ends the press keeps the menu open
+        // (see onContainerTouch).
+        this.contextMenuOpenedByTouch_ = true;
+      });
+      this.eventManager_.listen(this.controlsContainer_, 'touchend', (e) => {
+        this.onContainerTouch(e);
+      });
+    }
 
     this.eventManager_.listen(this.controlsContainer_, 'click', () => {
       this.onContainerClick();
@@ -1625,11 +1672,7 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
     // Listen for click events to dismiss the settings menus.
     this.eventManager_.listen(window, 'click', () => this.hideSettingsMenus());
 
-    this.eventManager_.listen(this.video_, 'play', () => {
-      this.onPlayStateChange_();
-    });
-
-    this.eventManager_.listen(this.video_, 'pause', () => {
+    this.eventManager_.listenMulti(this.video_, ['play', 'pause'], () => {
       this.onPlayStateChange_();
     });
 
@@ -1637,13 +1680,12 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
       this.onMouseMove_(e);
     });
 
-    this.eventManager_.listen(this.videoContainer_, 'touchmove', (e) => {
-      this.onMouseMove_(e);
-    }, {passive: true});
-
-    this.eventManager_.listen(this.videoContainer_, 'touchend', (e) => {
-      this.onMouseMove_(e);
-    }, {passive: true});
+    if (navigator.maxTouchPoints > 0) {
+      this.eventManager_.listenMulti(
+          this.videoContainer_, ['touchmove', 'touchend'], (e) => {
+            this.onMouseMove_(e);
+          }, {passive: true});
+    }
 
     this.eventManager_.listen(this.videoContainer_, 'mouseleave', () => {
       this.onMouseLeave_();
@@ -1661,33 +1703,12 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
       this.dispatchEvent(new shaka.util.FakeEvent('vrstatuschanged'));
     });
 
-    this.eventManager_.listen(this.videoContainer_, 'keydown', (e) => {
-      if (!this.config_.enableKeyboardPlaybackControlsInWindow &&
-        !this.isFullScreenEnabled()) {
-        this.onControlsKeyDown_(/** @type {!KeyboardEvent} */(e));
-      }
-    });
-
-    this.eventManager_.listen(this.videoContainer_, 'keyup', (e) => {
-      if (!this.config_.enableKeyboardPlaybackControlsInWindow &&
-        !this.isFullScreenEnabled()) {
-        this.onControlsKeyUp_(/** @type {!KeyboardEvent} */(e));
-      }
-    });
-
-    this.eventManager_.listen(window, 'keydown', (e) => {
-      if (this.config_.enableKeyboardPlaybackControlsInWindow ||
-        this.isFullScreenEnabled()) {
-        this.onControlsKeyDown_(/** @type {!KeyboardEvent} */(e));
-      }
-    });
-
-    this.eventManager_.listen(window, 'keyup', (e) => {
-      if (this.config_.enableKeyboardPlaybackControlsInWindow ||
-        this.isFullScreenEnabled()) {
-        this.onControlsKeyUp_(/** @type {!KeyboardEvent} */(e));
-      }
-    });
+    this.listenForControlsKeyEvents_(this.videoContainer_,
+        () => !this.config_.enableKeyboardPlaybackControlsInWindow &&
+              !this.isFullScreenEnabled());
+    this.listenForControlsKeyEvents_(window,
+        () => this.config_.enableKeyboardPlaybackControlsInWindow ||
+              this.isFullScreenEnabled());
 
     this.eventManager_.listen(
         this.adManager_, shaka.ads.Utils.AD_STARTED, () => {
@@ -1934,6 +1955,17 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
       return;
     }
 
+    if (this.contextMenuOpenedByTouch_ && this.anyContextMenusAreOpen()) {
+      // This touchend ends the long-press that just opened the context menu.
+      // Keep the menu open (matching desktop right-click behavior); a
+      // subsequent tap will close it through the normal path below.
+      this.contextMenuOpenedByTouch_ = false;
+      if (event.cancelable) {
+        event.preventDefault();
+      }
+      return;
+    }
+
     const hasLastContainerTouchEventTime =
         this.lastContainerTouchEventTime_ != null;
 
@@ -2021,6 +2053,24 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
   }
 
   /**
+   * @param {!EventTarget} target
+   * @param {function():boolean} condition
+   * @private
+   */
+  listenForControlsKeyEvents_(target, condition) {
+    this.eventManager_.listen(target, 'keydown', (e) => {
+      if (condition()) {
+        this.onControlsKeyDown_(/** @type {!KeyboardEvent} */(e));
+      }
+    });
+    this.eventManager_.listen(target, 'keyup', (e) => {
+      if (condition()) {
+        this.onControlsKeyUp_(/** @type {!KeyboardEvent} */(e));
+      }
+    });
+  }
+
+  /**
    * Support controls with keyboard inputs.
    * @param {!KeyboardEvent} event
    * @private
@@ -2036,12 +2086,35 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
     }
 
     const activeElement = document.activeElement;
-    const isVolumeBar = activeElement && activeElement.classList ?
-        activeElement.classList.contains('shaka-volume-bar') : false;
-    const isSeekBar = activeElement && activeElement.classList &&
-        activeElement.classList.contains('shaka-seek-bar');
+    if (activeElement) {
+      const tagName = activeElement.tagName.toLowerCase();
+      if (tagName == 'input' &&
+          !activeElement.classList.contains('shaka-range-element')) {
+        return;
+      }
+      const isEditable = tagName == 'textarea' || tagName == 'select' ||
+      /** @type {!HTMLElement} */ (activeElement).isContentEditable;
+      if (isEditable) {
+        return;
+      }
+    }
+
     const isFullscreen = this.isFullScreenEnabled();
-    const isControlsFocused = this.controlsContainer_.contains(activeElement);
+    const isControlsFocused = Boolean(activeElement &&
+        this.controlsContainer_.contains(activeElement));
+    const isContainerFocused = Boolean(activeElement &&
+        this.videoContainer_.contains(activeElement));
+
+    if (!isFullscreen && !isContainerFocused && activeElement &&
+        activeElement.closest &&
+        activeElement.closest('.shaka-video-container')) {
+      return;
+    }
+
+    const isVolumeBar = isControlsFocused && activeElement.classList ?
+        activeElement.classList.contains('shaka-volume-bar') : false;
+    const isSeekBar = isControlsFocused && activeElement.classList ?
+        activeElement.classList.contains('shaka-seek-bar') : false;
     const isFullscreenOrControlsInWindow = isFullscreen ||
         this.config_.enableKeyboardPlaybackControlsInWindow;
 
@@ -2104,13 +2177,15 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
         break;
       // Jump to the beginning of the video's seek range.
       case this.config_.shortcuts.home.toLowerCase():
-        if (this.seekBar_) {
+        if (this.seekBar_ && (isSeekBar || isFullscreenOrControlsInWindow)) {
+          event.preventDefault();
           this.seek_(this.player_.seekRange().start);
         }
         break;
       // Jump to the end of the video's seek range.
       case this.config_.shortcuts.end.toLowerCase():
-        if (this.seekBar_) {
+        if (this.seekBar_ && (isSeekBar || isFullscreenOrControlsInWindow)) {
+          event.preventDefault();
           this.seek_(this.player_.seekRange().end);
         }
         break;
@@ -2169,6 +2244,7 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
       case this.config_.shortcuts.play.toLowerCase():
         if (isSeekBar ||
             (isFullscreenOrControlsInWindow && !isControlsFocused)) {
+          event.preventDefault();
           this.playPausePresentation();
         }
         break;
@@ -2194,10 +2270,11 @@ shaka.ui.Controls = class extends shaka.util.FakeEventTarget {
       case '8':
       case '9': {
         // Jump to percentage in the video
-        if (!this.ad_) {
+        if (!this.ad_ && (isSeekBar || isFullscreenOrControlsInWindow)) {
           const seekRange = this.player_.seekRange();
           const length = seekRange.end - seekRange.start;
           if (length > 0) {
+            event.preventDefault();
             const percentage = parseInt(event.key, 10) / 10;
             this.seek_(seekRange.start + (length * percentage));
           }

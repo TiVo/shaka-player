@@ -27,10 +27,20 @@ describe('UI', () => {
   let ui;
   /** @type {!shaka.ui.Controls} */
   let controls;
-  /** @type {shakaNamespaceType} */
+  /** @type {shaka} */
   let compiledShaka;
+  /** @type {!Array<string>|undefined} */
+  let savedLanguages;
 
   beforeAll(async () => {
+    // Force locale to en-US so that localized strings
+    // (e.g. "Unrecognized") are predictable across machines.
+    savedLanguages = navigator.languages;
+    Object.defineProperty(navigator, 'languages', {
+      get: () => ['en-US'],
+      configurable: true,
+    });
+
     cssLink = /** @type {!HTMLLinkElement} */(document.createElement('link'));
     await UiUtils.setupCSS(cssLink);
 
@@ -124,6 +134,12 @@ describe('UI', () => {
 
   afterAll(() => {
     document.head.removeChild(cssLink);
+
+    // Restore the original navigator.languages.
+    Object.defineProperty(navigator, 'languages', {
+      get: () => savedLanguages,
+      configurable: true,
+    });
   });
 
   describe('language selections', () => {
@@ -742,8 +758,10 @@ describe('UI', () => {
           videoContainer, fakeControls);
       uncompiledElement.release();
 
+      /** @type {typeof shaka.ui.Element} */
+      const CompiledElement = compiledShaka.ui.Element;
       /** @extends {shaka.ui.Element} */
-      const TestElement = class extends compiledShaka.ui.Element {
+      const TestElement = class extends CompiledElement {
         /**
          * @param {!HTMLElement} parent
          * @param {!shaka.ui.Controls} controls

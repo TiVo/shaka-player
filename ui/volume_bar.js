@@ -63,12 +63,8 @@ shaka.ui.VolumeBar = class extends shaka.ui.RangeElement {
         'caststatuschanged',
         () => this.onPresentationVolumeChange_());
 
-    this.eventManager.listen(this.adManager,
-        shaka.ads.Utils.AD_VOLUME_CHANGED,
-        () => this.onAdVolumeChange_());
-
-    this.eventManager.listen(this.adManager,
-        shaka.ads.Utils.AD_MUTED,
+    this.eventManager.listenMulti(this.adManager,
+        [shaka.ads.Utils.AD_VOLUME_CHANGED, shaka.ads.Utils.AD_MUTED],
         () => this.onAdVolumeChange_());
 
     this.eventManager.listen(this.adManager,
@@ -186,7 +182,7 @@ shaka.ui.VolumeBar = class extends shaka.ui.RangeElement {
 
     event.preventDefault();
 
-    let newValue = this.getValue() + (event.deltaY > 0 ? 1 : -1);
+    let newValue = this.getValue() + (event.deltaY > 0 ? -1 : 1);
 
     // Clamp value between 0 and 100
     newValue = Math.max(0, Math.min(100, newValue));

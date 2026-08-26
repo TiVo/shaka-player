@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-// cspell:ignore playenabler
+// cspell:ignore playenabler moqtail cmsf testsrc eccp
 
 /**
  * @fileoverview
@@ -46,6 +46,7 @@ shakaAssets.Source = {
   BBC: 'BBC',
   DOLBY: 'Dolby',
   EYEVINN: 'Eyevinn',
+  MOQTAIL: 'moqtail',
 };
 
 
@@ -348,7 +349,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.WEBM)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth'),
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy'),
   new ShakaDemoAssetInfo(
       /* name= */ 'Angel One (multicodec, multilingual, ClearKey server)',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/angel_one.png',
@@ -393,7 +394,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.SURROUND)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth'),
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy'),
   new ShakaDemoAssetInfo(
       /* name= */ 'Angel One (HLS, MP4, multilingual, Widevine, single linear ad)',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/angel_one.png',
@@ -407,7 +408,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.SURROUND)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth'),
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy'),
   new ShakaDemoAssetInfo(
       /* name= */ 'Angel One (HLS, MP4, multilingual, Widevine, single non-linear ad)',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/angel_one.png',
@@ -421,7 +422,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.SURROUND)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth'),
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy'),
   new ShakaDemoAssetInfo(
       /* name= */ 'Angel One (HLS, MP4, SAMPLE-AES-CTR, multi-key)',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/angel_one.png',
@@ -510,7 +511,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.WEBM)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth')
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy')
       .setExtraConfig({
         drm: {
           advanced: {
@@ -537,7 +538,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.WEBM)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth')
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy')
       .addExtraChapter(shakaAssets.ExternalChapters.SINTEL),
   new ShakaDemoAssetInfo(
       /* name= */ 'Sintel 4k (MP4, VTT in MP4)',
@@ -573,7 +574,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.WEBM)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth')
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy')
       .setExtraConfig({
         drm: {
           advanced: {
@@ -596,7 +597,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.WEBM)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth')
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy')
       .setExtraConfig({
         drm: {
           advanced: {
@@ -666,7 +667,7 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.AUDIO_ONLY)
       .addFeature(shakaAssets.Feature.WEBM)
       .addFeature(shakaAssets.Feature.OFFLINE)
-      .addLicenseServer('com.widevine.alpha', 'https://cwip-shaka-proxy.appspot.com/no_auth'),
+      .addLicenseServer('com.widevine.alpha', 'https://proxy.uat.widevine.com/proxy'),
   new ShakaDemoAssetInfo(
       /* name= */ 'Tears of Steel (multicodec, TTML)',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/tears_of_steel.png',
@@ -900,7 +901,7 @@ shakaAssets.testAssets = [
   new ShakaDemoAssetInfo(
       /* name= */ 'ClearKey with raw single key',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/tears_of_steel.png',
-      /* manifestUri= */ 'https://media.axprod.net/TestVectors/v7-MultiDRM-SingleKey/Manifest_1080p_ClearKey.mpd',
+      /* manifestUri= */ 'https://media.axprod.net/TestVectors/Dash/protected_dash_1080p_h264_singlekey/manifest.mpd',
       /* source= */ shakaAssets.Source.AXINOM)
       .addKeySystem(shakaAssets.KeySystem.CLEAR_KEY)
       .addFeature(shakaAssets.Feature.DASH)
@@ -913,14 +914,14 @@ shakaAssets.testAssets = [
         drm: {
           clearKeys: {
             // cspell: disable-next-line
-            'nrQFDeRLSAKTLifXUIPiZg': 'FmY0xnWCPCNaSpRG-tUuTQ',
+            '4060a865887842679cbf91ae5bae1e72': 'fc35340837310cc0fb53de97e22a69e0',
           },
         },
       }),
   new ShakaDemoAssetInfo(
       /* name= */ 'ClearKey with raw multiple keys',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/tears_of_steel.png',
-      /* manifestUri= */ 'https://media.axprod.net/TestVectors/v7-MultiDRM-MultiKey/Manifest_1080p_ClearKey.mpd',
+      /* manifestUri= */ 'https://media.axprod.net/TestVectors/MultiKey/Dash_h264_1080p_cenc/manifest.mpd',
       /* source= */ shakaAssets.Source.AXINOM)
       .addKeySystem(shakaAssets.KeySystem.CLEAR_KEY)
       .addFeature(shakaAssets.Feature.DASH)
@@ -933,11 +934,9 @@ shakaAssets.testAssets = [
         drm: {
           clearKeys: {
             // cspell: disable
-            'gDmb9YohQBSAU-J-dI6YwA': '3aHppzZ2g3Y3wK1uNnUXmg',
-            'kJU-CWyySaOiYHpf7-rUmQ': 'zsmKW7Mq9Unz5R7oUGeF8w',
-            'Dk2pK9DoSmaMP8Jal-tlMg': 'UmYYfGb7znuoFAQM79ayHw',
-            'WF8jPzByRvGfpG3CLGagFA': 'jayKpC3tmPq4YKXkapa8FA',
-            'QiK9eLxFQb-2Pm-BTcOR3w': 'GAMi9v92b9ca5yBwaptN-Q',
+            '426d1a3278fd4f22873068db3974dda9': '36bd3359241d4ba6f9cba62c1e041e01',
+            '9dc8e80acbfa41c3984fb6043440391a': '495a038c79dd5af4290f0850435832e5',
+            '41baa59969054fc0a8c6355dcd1ab39f': '02ee51601e6cd506846de4468f22ad7f',
             // cspell: enable
           },
         },
@@ -1550,9 +1549,17 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.OFFLINE),
   new ShakaDemoAssetInfo(
       /* name= */ 'Apple Advanced HLS Stream (fMP4)',
-
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/apple_test_pattern.png',
       /* manifestUri= */ 'https://storage.googleapis.com/shaka-demo-assets/apple-advanced-stream-fmp4/master.m3u8',
+      /* source= */ shakaAssets.Source.APPLE)
+      .addFeature(shakaAssets.Feature.HLS)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.CAPTIONS)
+      .addFeature(shakaAssets.Feature.OFFLINE),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'Apple Advanced HLS Stream (HEVC)',
+      /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/apple_test_pattern.png',
+      /* manifestUri= */ 'https://devstreaming-cdn.apple.com/videos/streaming/examples/bipbop_adv_example_hevc/master.m3u8',
       /* source= */ shakaAssets.Source.APPLE)
       .addFeature(shakaAssets.Feature.HLS)
       .addFeature(shakaAssets.Feature.MP4)
@@ -1606,6 +1613,29 @@ shakaAssets.testAssets = [
       .addFeature(shakaAssets.Feature.SUBTITLES)
       .addFeature(shakaAssets.Feature.OFFLINE)
       .addFeature(shakaAssets.Feature.THUMBNAILS),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'Advanced stream HLS Stream (AV1)',
+      /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/becoming_you.png',
+      /* manifestUri= */ 'https://devstreaming-cdn.apple.com/videos/streaming/examples/av1-sample/av1-sample.m3u8',
+      /* source= */ shakaAssets.Source.APPLE)
+      .addFeature(shakaAssets.Feature.HLS)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .addFeature(shakaAssets.Feature.TRICK_MODE)
+      .addFeature(shakaAssets.Feature.SUBTITLES)
+      .addFeature(shakaAssets.Feature.OFFLINE)
+      .addFeature(shakaAssets.Feature.AV1),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'Advanced stream HLS Stream (Interstitial)',
+      /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/becoming_you.png',
+      /* manifestUri= */ 'https://devstreaming-cdn.apple.com/videos/streaming/examples/interstitial-sample/mvp_interstitial_sample.m3u8',
+      /* source= */ shakaAssets.Source.APPLE)
+      .addFeature(shakaAssets.Feature.HLS)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .addFeature(shakaAssets.Feature.TRICK_MODE)
+      .addFeature(shakaAssets.Feature.SUBTITLES)
+      .addFeature(shakaAssets.Feature.OFFLINE),
   new ShakaDemoAssetInfo(
       /* name= */ '3D movie stream',
       /* iconUri= */ 'https://storage.googleapis.com/shaka-asset-icons/prehistoric.png',
@@ -2614,6 +2644,184 @@ shakaAssets.testAssets = [
       /* source= */ shakaAssets.Source.EYEVINN)
       .addFeature(shakaAssets.Feature.MSF)
       .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.MULTIPLE_LANGUAGES)
+      .addFeature(shakaAssets.Feature.SUBTITLES)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['cmaf/clear'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqlivemock Multi-DRM',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://moqlivemock.demo.osaas.io/moq',
+      /* source= */ shakaAssets.Source.EYEVINN)
+      .addKeySystem(shakaAssets.KeySystem.PLAYREADY)
+      .addKeySystem(shakaAssets.KeySystem.WIDEVINE)
+      .addKeySystem(shakaAssets.KeySystem.FAIRPLAY)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.MULTIPLE_LANGUAGES)
+      .addFeature(shakaAssets.Feature.SUBTITLES)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['cmaf/drm-cbcs'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqlivemock ClearKey',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://moqlivemock.demo.osaas.io/moq',
+      /* source= */ shakaAssets.Source.EYEVINN)
+      .addKeySystem(shakaAssets.KeySystem.CLEAR_KEY)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.MULTIPLE_LANGUAGES)
+      .addFeature(shakaAssets.Feature.SUBTITLES)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['cmaf/eccp-cbcs'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  // }}}
+
+  // moqtail assets {{{
+  /* moqtail Contents */
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail testsrc',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'testsrc'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch00',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch00'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch01',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch01'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch02',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch02'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch03',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch03'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch04',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch04'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch05',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch05'],
+          },
+        },
+      })
+      .setMimeType('application/msf'),
+  new ShakaDemoAssetInfo(
+      /* name= */ 'moqtail ch06',
+      /* iconUri= */ '',
+      /* manifestUri= */ 'https://relay.moqtail.dev',
+      /* source= */ shakaAssets.Source.MOQTAIL)
+      .addFeature(shakaAssets.Feature.MSF)
+      .addFeature(shakaAssets.Feature.MP4)
+      .addFeature(shakaAssets.Feature.ULTRA_HIGH_DEFINITION)
+      .setExtraConfig({
+        manifest: {
+          msf: {
+            namespaces: ['moqtail', 'ch06'],
+          },
+        },
+      })
       .setMimeType('application/msf'),
   // }}}
 ];

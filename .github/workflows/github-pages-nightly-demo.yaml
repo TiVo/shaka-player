@@ -16,62 +16,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: zulu
           java-version: 21
 
-      - name: Install dependencies
-        shell: bash
-        run: npm ci
-
-      - name: Build Shaka Player
-        shell: bash
-        run: npm run build
-
-      - name: Extract git version
-        shell: bash
-        run: |
-          (
-            cd build
-            python3 -c 'from shakaBuildHelpers import git_version; print(git_version())'
-          ) > demo-version
-
-      - name: Tag the Player version
-        shell: bash
-        run: |
-          DEMO_VERSION="$(cat demo-version)-uncompiled"
-          sed \
-              -i lib/player.js \
-              -e "s/\(shaka.Player.version\) = .*/\1 = '$DEMO_VERSION';/"
-          rm demo-version
-
-      - name: Backup demo node modules
-        shell: bash
-        run: |
-          DEMO_NODE_MODULES=$(jq -r .shakaCustom.demoDeps[] package.json)
-          tar cf demo-modules.tar \
-              $(echo "$DEMO_NODE_MODULES" | sed -e 's@^@node_modules/@')
-
-      - name: Delete unneeded files
-        shell: bash
-        run: rm -rf .git .github app-engine build conditional externs test node_modules
-
-      - name: Restore demo node modules
-        shell: bash
-        run: |
-          tar xf demo-modules.tar
-          rm demo-modules.tar
+      - uses: ./.github/workflows/custom-actions/prep-demo-for-deployment
 
       - name: Upload static files as artifact
         id: nightly

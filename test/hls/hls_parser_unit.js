@@ -389,6 +389,61 @@ describe('HlsParser', () => {
     expect(actual).toEqual(manifest);
   });
 
+  // eslint-disable-next-line @stylistic/max-len
+  it('Detect spatial audio in Dolby AC-4 for immersive stereo content', async () => {
+    const master = [
+      '#EXTM3U\n',
+      '#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud1",LANGUAGE="eng",',
+      'CHANNELS="2/IMSA",SAMPLE-RATE="48000",URI="audio"\n',
+      '#EXT-X-STREAM-INF:BANDWIDTH=200,CODECS="avc1,ac-4",',
+      'RESOLUTION=960x540,FRAME-RATE=60,AUDIO="aud1"\n',
+      'video\n',
+    ].join('');
+
+    const media = [
+      '#EXTM3U\n',
+      '#EXT-X-PLAYLIST-TYPE:VOD\n',
+      '#EXT-X-MAP:URI="init.mp4",BYTERANGE="616@0"\n',
+      '#EXTINF:5,\n',
+      '#EXT-X-BYTERANGE:121090@616\n',
+      'main.mp4',
+    ].join('');
+
+    const manifest = shaka.test.ManifestGenerator.generate((manifest) => {
+      manifest.sequenceMode = sequenceMode;
+      manifest.type = shaka.media.ManifestParser.HLS;
+      manifest.anyTimeline();
+      manifest.addPartialVariant((variant) => {
+        variant.language = 'en';
+        variant.bandwidth = 200;
+        variant.addPartialStream(ContentType.VIDEO, (stream) => {
+          stream.frameRate = 60;
+          stream.mime('video/mp4', 'avc1');
+          stream.size(960, 540);
+        });
+        variant.addPartialStream(ContentType.AUDIO, (stream) => {
+          stream.language = 'en';
+          stream.originalLanguage = 'eng';
+          stream.channelsCount = 2;
+          stream.audioSamplingRate = 48000;
+          stream.spatialAudio = true;
+          stream.mime('audio/mp4', 'ac-4');
+        });
+      });
+    });
+
+    fakeNetEngine
+        .setResponseText('test:/master', master)
+        .setResponseText('test:/audio', media)
+        .setResponseText('test:/video', media)
+        .setResponseValue('test:/init.mp4', initSegmentData)
+        .setResponseValue('test:/main.mp4', segmentData);
+
+    const actual = await parser.start('test:/master', playerInterface);
+    await loadAllStreamsFor(actual);
+    expect(actual).toEqual(manifest);
+  });
+
   it('fallback to AVERAGE-BANDWIDTH', async () => {
     const master = [
       '#EXTM3U\n',
@@ -710,6 +765,38 @@ describe('HlsParser', () => {
       manifest.addPartialVariant((variant) => {
         variant.addPartialStream(ContentType.AUDIO, (stream) => {
           stream.mime('audio/mpeg', 'mp4a.40.34');
+        });
+      });
+      manifest.sequenceMode = sequenceMode;
+      manifest.type = shaka.media.ManifestParser.HLS;
+    });
+
+    await testHlsParser(master, media, manifest);
+  });
+
+  // https://github.com/shaka-project/shaka-player/issues/10387
+  it('detects audio-only raw content when CODECS is missing', async () => {
+    // With no CODECS attribute, we default to assuming multiplexed
+    // audio+video.  The media playlist proves otherwise: a raw MP3 elementary
+    // stream can't hold video.
+    const master = [
+      '#EXTM3U\n',
+      '#EXT-X-STREAM-INF:BANDWIDTH=63701\n',
+      'video\n',
+    ].join('');
+
+    const media = [
+      '#EXTM3U\n',
+      '#EXT-X-PLAYLIST-TYPE:VOD\n',
+      '#EXTINF:5,\n',
+      'main.mp3',
+    ].join('');
+
+    const manifest = shaka.test.ManifestGenerator.generate((manifest) => {
+      manifest.anyTimeline();
+      manifest.addPartialVariant((variant) => {
+        variant.addPartialStream(ContentType.AUDIO, (stream) => {
+          stream.mime('audio/mpeg', 'mp4a.40.2');
         });
       });
       manifest.sequenceMode = sequenceMode;
@@ -7047,5 +7134,48 @@ describe('HlsParser', () => {
     // valid.
     expect(manifest.variants.length).toBe(1);
     expect(manifest.variants[0].video).toBeTruthy();
+  });
+
+  // eslint-disable-next-line @stylistic/max-len
+  it('corrects accumulated gap when discontinuity sequence changes', async () => {
+    const master = [
+      '#EXTM3U\n',
+      '#EXT-X-STREAM-INF:BANDWIDTH=200,CODECS="avc1.42c00d",',
+      'CLOSED-CAPTIONS=NONE\n',
+      'test:/video\n',
+    ].join('');
+
+    const media = [
+      '#EXTM3U\n',
+      '#EXT-X-TARGETDURATION:10\n',
+      '#EXT-X-DISCONTINUITY-SEQUENCE:0\n',
+      '#EXT-X-PROGRAM-DATE-TIME:2023-01-01T00:00:00Z\n',
+      '#EXTINF:10,\n',
+      'segment1.ts\n',
+      '#EXT-X-DISCONTINUITY\n',
+      '#EXT-X-PROGRAM-DATE-TIME:2023-01-01T01:00:00Z\n',
+      '#EXTINF:10,\n',
+      'segment2.ts\n',
+    ].join('');
+
+    fakeNetEngine
+        .setResponseText('test:/master', master)
+        .setResponseText('test:/video', media);
+
+    const manifest = await parser.start('test:/master', playerInterface);
+    const video = manifest.variants[0].video;
+    await video.createSegmentIndex();
+
+    const index = video.segmentIndex;
+    const ref1 = index.get(0);
+    const ref2 = index.get(1);
+
+    expect(ref1.startTime).toBe(0);
+    expect(ref1.endTime).toBe(10);
+
+    expect(ref2.startTime).toBe(10);
+    expect(ref2.endTime).toBe(20);
+
+    expect(ref2.syncTime).toBe(ref1.syncTime + 10);
   });
 });

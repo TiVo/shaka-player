@@ -119,44 +119,43 @@ shaka.ui.RangeElement = class extends shaka.ui.Element {
       }
     });
 
-    this.eventManager.listen(this.bar, 'touchstart', (e) => {
-      if (!this.bar.disabled) {
-        this.isChanging_ = true;
-        this.setBarValueForTouch_(e);
-        this.onChangeStart();
-        e.stopPropagation();
-      }
-    });
-
     this.eventManager.listen(this.bar, 'input', () => {
       this.onChange();
     });
 
-    this.eventManager.listen(this.bar, 'touchmove', (e) => {
-      if (this.isChanging_) {
-        this.setBarValueForTouch_(e);
-        this.onChange();
-        e.stopPropagation();
-      }
-    });
+    if (navigator.maxTouchPoints > 0) {
+      this.eventManager.listen(this.bar, 'touchstart', (e) => {
+        if (!this.bar.disabled) {
+          this.isChanging_ = true;
+          this.setBarValueForTouch_(e);
+          this.onChangeStart(/* fromTouchEvent= */ true);
+          // Apply the new value right away, mirroring the mousedown handler.
+          // This makes a single tap seek to the touched position for controls
+          // that act on onChange (e.g. volume and playback-rate sliders),
+          // instead of requiring the user to drag the thumb.
+          this.onChange();
+          e.stopPropagation();
+        }
+      });
 
-    this.eventManager.listen(this.bar, 'touchend', (e) => {
-      if (this.isChanging_) {
-        this.isChanging_ = false;
-        this.setBarValueForTouch_(e);
-        this.onChangeEnd();
-        e.stopPropagation();
-      }
-    });
+      this.eventManager.listen(this.bar, 'touchmove', (e) => {
+        if (this.isChanging_) {
+          this.setBarValueForTouch_(e);
+          this.onChange();
+          e.stopPropagation();
+        }
+      });
 
-    this.eventManager.listen(this.bar, 'touchcancel', (e) => {
-      if (this.isChanging_) {
-        this.isChanging_ = false;
-        this.setBarValueForTouch_(e);
-        this.onChangeEnd();
-        e.stopPropagation();
-      }
-    });
+      this.eventManager.listenMulti(this.bar, ['touchend', 'touchcancel'],
+          (e) => {
+            if (this.isChanging_) {
+              this.isChanging_ = false;
+              this.setBarValueForTouch_(e);
+              this.onChangeEnd();
+              e.stopPropagation();
+            }
+          });
+    }
 
     this.eventManager.listen(this.bar, 'mouseup', (e) => {
       if (this.isChanging_) {
@@ -204,10 +203,11 @@ shaka.ui.RangeElement = class extends shaka.ui.Element {
   /**
    * Called when user interaction begins.
    * To be overridden by subclasses.
+   * @param {boolean=} fromTouchEvent
    * @override
    * @export
    */
-  onChangeStart() {}
+  onChangeStart(fromTouchEvent = false) {}
 
   /**
    * Called when a new value is set by user interaction.

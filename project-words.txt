@@ -74,6 +74,7 @@ seekforward
 seekto
 scrubstarted
 scrubstopped
+seekrangechanged
 segmentappended
 selectcomplete
 showingui
@@ -87,6 +88,7 @@ submenuopen
 textchanged
 textlang
 textrole
+texttrackvisibility
 thirdquartile
 timeandseekrangeupdated
 timelineregionadded
@@ -159,6 +161,7 @@ programinformation
 seekbar
 statelessly
 stringifiers
+styleable
 testcheckstamp
 textproto
 transmux
@@ -218,12 +221,14 @@ Jwplayer
 Kaltura
 Livesim
 moqlivemock
+moqtail
 muxjs
 Nagra
 Playready
 Quicktime
 svta
 teppeis
+TiVo
 Tizen
 Uplynk
 Verimatrix
@@ -254,6 +259,7 @@ bsid
 buffersource
 cabac
 cbcs
+cdat
 cdna
 cehx
 cenc
@@ -310,6 +316,7 @@ hdlr
 hvcc
 iamf
 imagetype
+imsa
 imsc
 inband
 isom

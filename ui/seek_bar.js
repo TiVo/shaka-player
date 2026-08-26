@@ -95,6 +95,9 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
       this.markChapters_();
     });
 
+    /** @private {ResizeObserver} */
+    this.resizeObserver_ = null;
+
     /**
      * When user is scrubbing the seek bar - we should pause the video - see
      * https://github.com/google/shaka-player/pull/2898#issuecomment-705229215
@@ -155,11 +158,21 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
     this.lastThumbnailPendingRequest_ = null;
 
     /**
-     * True if the bar is moving due to touchscreen or keyboard events.
+     * True if the bar is moving due to touchscreen events.
      *
      * @private {boolean}
      */
     this.isMoving_ = false;
+
+    /**
+     * True if we have set video.currentTime after a seek interaction but the
+     * video element has not yet fired the 'seeked' event. During this window
+     * video.buffered still reflects the pre-seek state, so we must keep using
+     * the "during-seek" buffer-painting logic to avoid a visible white-flash.
+     *
+     * @private {boolean}
+     */
+    this.isWaitingForSeek_ = false;
 
     /**
      * The timer is activated to hide the thumbnail.
@@ -168,6 +181,38 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
      */
     this.hideThumbnailTimer_ = new shaka.util.Timer(() => {
       this.hideThumbnailTimeContainer_();
+    });
+
+    /**
+     * The value of the bar right before the last key press, used to tell
+     * whether the key moved the playhead at all.
+     *
+     * @private {?number}
+     */
+    this.valueBeforeKeyPress_ = null;
+
+    /**
+     * The timer is activated to preview the position a key press has moved
+     * the bar to.
+     *
+     * Which keys seek, and by how much, is up to Controls, which listens for
+     * them on an ancestor of the bar and therefore runs after us. Waiting for
+     * the event to be over lets us read the value it has just set instead of
+     * repeating that decision here.
+     *
+     * @private {shaka.util.Timer}
+     */
+    this.showThumbnailTimer_ = new shaka.util.Timer(() => {
+      const value = this.getValue();
+      if (value == this.valueBeforeKeyPress_ ||
+          this.controls.anySettingsMenusAreOpen()) {
+        // The key did not seek.
+        return;
+      }
+      this.showThumbnailAtValue_(value);
+      this.hideThumbnailTimer_.stop();
+      this.hideThumbnailTimer_.tickAfter(
+          shaka.ui.SeekBar.KEYBOARD_THUMBNAIL_TIMEOUT_);
     });
 
     /** @private {!Array<!shaka.extern.AdCuePoint>} */
@@ -232,10 +277,39 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
       this.hideThumbnailTimer_.tickNow();
     });
 
+    this.eventManager.listen(this.bar, 'keydown', () => {
+      this.valueBeforeKeyPress_ = this.getValue();
+      // We use tickAfter so that a timeout of 0 is programmed internally
+      // and it is not executed immediately.
+      this.showThumbnailTimer_.tickAfter(/* seconds= */ 0);
+    });
+
     this.eventManager.listen(this.controls, 'chaptersupdated', () => {
       this.markChapters_();
       if (this.controls.getChapters().length > 0 && this.player.isDynamic()) {
         this.chaptersTimer_.tickEvery(/* seconds= */ 0.25);
+      }
+    });
+
+    // The chapter markers are positioned in absolute pixels, so they have
+    // to be recomputed whenever the seek bar changes size (e.g. entering
+    // or leaving fullscreen).
+    // Use ResizeObserver if available, fallback to window resize event.
+    if (window.ResizeObserver) {
+      this.resizeObserver_ = new ResizeObserver(() => this.markChapters_());
+      this.resizeObserver_.observe(this.bar);
+    } else {
+      // Fallback for older browsers.
+      this.eventManager.listen(window, 'resize', () => this.markChapters_());
+    }
+
+    // When the browser finishes seeking, video.buffered is finally updated.
+    // Clear the post-seek flag and repaint so the bar reflects the real
+    // buffered state without any delay.
+    this.eventManager.listen(this.video, 'seeked', () => {
+      if (this.isWaitingForSeek_) {
+        this.isWaitingForSeek_ = false;
+        this.update();
       }
     });
 
@@ -258,6 +332,12 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
     this.adBreaksTimer_ = null;
     this.chaptersTimer_?.stop();
     this.chaptersTimer_ = null;
+    this.hideThumbnailTimer_?.stop();
+    this.hideThumbnailTimer_ = null;
+    this.showThumbnailTimer_?.stop();
+    this.showThumbnailTimer_ = null;
+    this.resizeObserver_?.disconnect();
+    this.resizeObserver_ = null;
 
     super.release();
   }
@@ -266,9 +346,10 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
    * Called by the base class when user interaction with the input element
    * begins.
    *
+   * @param {boolean=} fromTouchEvent
    * @override
    */
-  onChangeStart() {
+  onChangeStart(fromTouchEvent = false) {
     this.wasPlaying_ = !this.video.paused;
     this.controls.setSeeking(true);
 
@@ -287,7 +368,7 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
     }
 
     this.hideThumbnailTimer_.stop();
-    this.isMoving_ = true;
+    this.isMoving_ = fromTouchEvent;
   }
 
   /**
@@ -346,6 +427,11 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
       // call the event so that we can respond immediately.
       this.seekTimer_.tickNow();
 
+      // video.buffered is not updated synchronously after setting
+      // video.currentTime, so keep the "during-seek" painting logic active
+      // until the 'seeked' event confirms the browser has caught up.
+      this.isWaitingForSeek_ = true;
+
       if (this.wasPlaying_) {
         this.video.play();
       }
@@ -399,7 +485,7 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
     let bufferedEnd = 0;
 
     if (bufferedLength) {
-      if (this.controls.isSeeking()) {
+      if (this.controls.isSeeking() || this.isWaitingForSeek_) {
         // While the user drags, only paint the range that actually contains
         // the target position (if it exists).
         const r = this.getBufferedRangeForTime_(currentTime);
@@ -471,8 +557,7 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
 
     const seekRange = this.player.seekRange();
     const seekRangeSize = seekRange.end - seekRange.start;
-    const gradient = ['to right'];
-    let pointsAsFractions = [];
+    const rects = [];
     const adBreakColor = this.config_.seekBarColors.adBreaks;
     let postRollAd = false;
     for (const point of this.adCuePoints_) {
@@ -496,42 +581,29 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
           endFrac = (endDist / seekRangeSize) || 0;
         }
 
-        pointsAsFractions.push({
-          start: startFrac,
-          end: endFrac,
+        rects.push({
+          position: (startFrac * 100) + '%',
+          width: ((endFrac - startFrac) * 100) + '%',
         });
       }
     }
 
-    pointsAsFractions = pointsAsFractions.sort((a, b) => {
-      return a.start - b.start;
-    });
-
-    for (const point of pointsAsFractions) {
-      gradient.push(this.makeColor_('transparent', point.start));
-      gradient.push(this.makeColor_(adBreakColor, point.start));
-      gradient.push(this.makeColor_(adBreakColor, point.end));
-      gradient.push(this.makeColor_('transparent', point.end));
-    }
-
     if (postRollAd) {
-      gradient.push(this.makeColor_('transparent', 0.99));
-      gradient.push(this.makeColor_(adBreakColor, 0.99));
+      rects.push({position: '99%', width: '1%'});
     }
     this.adMarkerContainer_.style.background =
-            'linear-gradient(' + gradient.join(',') + ')';
+            this.buildLayeredBackground_(rects, adBreakColor);
   }
 
   /**
    * @private
    */
   markChapters_() {
-    const gradient = ['to right'];
-    const chapterColor = this.config_.seekBarColors.chapters;
+    const color = this.config_.seekBarColors.chapters;
 
     const chapters = this.controls.getChapters();
 
-    if (!chapters.length || !chapterColor || chapterColor === 'transparent') {
+    if (!chapters.length || !color || color === 'transparent') {
       this.chapterMarkerContainer_.style.background = 'transparent';
       this.chaptersTimer_?.stop();
       return;
@@ -542,6 +614,10 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
     const minSeekBarWindow =
         shaka.ui.SeekBar.MIN_SEEK_WINDOW_TO_SHOW_SEEKBAR_;
     if (seekRangeSize < minSeekBarWindow) {
+      if (seekRangeSize <= 0) {
+        this.chaptersTimer_.tickAfter(/* seconds= */ 0.1);
+        return;
+      }
       this.chapterMarkerContainer_.style.background = 'transparent';
       this.chaptersTimer_?.stop();
       return;
@@ -570,19 +646,26 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
       return;
     }
 
-    const sortedPoints = Array.from(points).sort((a, b) => a - b);
-    for (const point of sortedPoints) {
-      const start = ((point - seekRange.start) / seekRangeSize) * 100 + '%';
-      const end = `calc(${start} + 2px)`;
-
-      gradient.push(`transparent ${start}`);
-      gradient.push(`${chapterColor} ${start}`);
-      gradient.push(`${chapterColor} ${end}`);
-      gradient.push(`transparent ${end}`);
+    // Align each marker with the playhead thumb rather than the raw seek-bar
+    // edges. The thumb is centered within (width - thumbSize), so a naive
+    // (time / range) * 100% placement drifts away from where the thumb sits.
+    const markWidth = 2;
+    const rects = [];
+    for (const point of Array.from(points).sort((a, b) => a - b)) {
+      const pixelCenter = this.getThumbCenterPixel_(point);
+      if (pixelCenter == null) {
+        // The bar has no size yet.  Try again shortly.
+        this.chaptersTimer_.tickAfter(/* seconds= */ 0.1);
+        return;
+      }
+      rects.push({
+        position: (pixelCenter - markWidth / 2) + 'px',
+        width: markWidth + 'px',
+      });
     }
 
     this.chapterMarkerContainer_.style.background =
-        'linear-gradient(' + gradient.join(',') + ')';
+            this.buildLayeredBackground_(rects, color);
   }
 
 
@@ -594,6 +677,40 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
    */
   makeColor_(color, fraction) {
     return color + ' ' + (fraction * 100) + '%';
+  }
+
+  /**
+   * @param {!Array<{position: string, width: string}>} rects
+   * @param {string} color
+   * @return {string}
+   * @private
+   */
+  buildLayeredBackground_(rects, color) {
+    if (!rects.length || !color || color === 'transparent') {
+      return 'transparent';
+    }
+    return rects
+        .map(({position, width}) => {
+          if (width.endsWith('%')) {
+            // CSS background-position with percentages behaves
+            // differently than absolute pixels. To avoid shifting
+            // percentage-based markers, we use color stops.
+            const start = parseFloat(position);
+            const end = start + parseFloat(width);
+            const p1 = `transparent ${start}%`;
+            const p2 = `${color} ${start}%`;
+            const p3 = `${color} ${end}%`;
+            const p4 = `transparent ${end}%`;
+
+            return `linear-gradient(to right, ${p1}, ${p2}, ${p3}, ` +
+                   `${p4}) 0 0 / 100% 100% no-repeat`;
+          }
+
+          // Standard background positioning for absolute widths.
+          return `linear-gradient(${color}, ${color}) ` +
+                 `${position} / ${width} 100% no-repeat`;
+        })
+        .join(',');
   }
 
 
@@ -648,16 +765,74 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
   }
 
   /**
+   * Returns the offset, in pixels from the left edge of the seek bar, at
+   * which the center of the playhead thumb sits for the given value. The
+   * thumb travels within (width - thumbSize) rather than the full bar
+   * width, so this differs from a naive (value / range) * width mapping.
+   *
+   * @param {number} value
+   * @return {?number} The pixel offset, or null if the bar has no size.
+   * @private
+   */
+  getThumbCenterPixel_(value) {
+    const rect = this.bar.getBoundingClientRect();
+    const barMin = parseFloat(this.bar.min);
+    const barMax = parseFloat(this.bar.max);
+    if (rect.width <= 0 || barMax <= barMin) {
+      return null;
+    }
+    const thumbSize = shaka.ui.SeekBar.THUMB_SIZE_PX_;
+    return (value - barMin) / (barMax - barMin) * (rect.width - thumbSize) +
+        thumbSize / 2;
+  }
+
+  /**
+   * Snaps to a chapter start when the pointer is on the pixel that
+   * contains its marker. When the content has more seconds than the seek
+   * bar has pixels, chapter boundaries could otherwise be impossible to
+   * hover or seek to precisely.
+   *
+   * @param {number} clientX
+   * @return {number}
+   * @override
+   */
+  getValueFromPosition(clientX) {
+    const value = super.getValueFromPosition(clientX);
+    const chapters = this.controls.getChapters();
+    if (!chapters.length) {
+      return value;
+    }
+    const rect = this.bar.getBoundingClientRect();
+    const barMin = parseFloat(this.bar.min);
+    const barMax = parseFloat(this.bar.max);
+    let snappedValue = value;
+    let bestDistance = shaka.ui.SeekBar.CHAPTER_SNAP_DISTANCE_PX_;
+    for (const chapter of chapters) {
+      if (chapter.startTime < barMin || chapter.startTime > barMax) {
+        continue;
+      }
+      const pixelCenter = this.getThumbCenterPixel_(chapter.startTime);
+      if (pixelCenter == null) {
+        return value;
+      }
+      const distance = Math.abs(clientX - (rect.left + pixelCenter));
+      if (distance <= bestDistance) {
+        bestDistance = distance;
+        snappedValue = chapter.startTime;
+      }
+    }
+    return snappedValue;
+  }
+
+  /**
    * @param {number} value
    * @private
    */
   showThumbnailAtValue_(value) {
-    const min = parseFloat(this.bar.min);
-    const max = parseFloat(this.bar.max);
-    const rect = this.bar.getBoundingClientRect();
-    const thumbSize = 12; // @thumb-size in range_elements.less
-    const scale = (rect.width - thumbSize) / (max - min);
-    const position = (value - min) * scale + thumbSize / 2;
+    const position = this.getThumbCenterPixel_(value);
+    if (position == null) {
+      return;
+    }
     this.showThumbnailAndTime_(position, value);
   }
 
@@ -849,7 +1024,7 @@ shaka.ui.SeekBar = class extends shaka.ui.RangeElement {
   getChapter_(totalSeconds) {
     for (const chapter of this.controls.getChapters()) {
       if (chapter.startTime <= totalSeconds &&
-          chapter.endTime >= totalSeconds) {
+          chapter.endTime > totalSeconds) {
         return chapter;
       }
     }
@@ -903,6 +1078,36 @@ shaka.ui.SeekBar.Transparent_Image_ =
  * @private
  */
 shaka.ui.SeekBar.MIN_SEEK_WINDOW_TO_SHOW_SEEKBAR_ = 5; // seconds
+
+
+/**
+ * The width, in pixels, of the seek bar thumb. This is the value of the
+ * "thumb-size" variable in range_elements.less. Note: for everything to
+ * work, this value has to be synchronized with the one in the stylesheet.
+ *
+ * @const {number}
+ * @private
+ */
+shaka.ui.SeekBar.THUMB_SIZE_PX_ = 12;
+
+
+/**
+ * @const {number}
+ * @private
+ */
+shaka.ui.SeekBar.KEYBOARD_THUMBNAIL_TIMEOUT_ = 1;
+
+
+/**
+ * The maximum distance, in pixels, between the pointer and a chapter
+ * start marker at which the seek bar snaps to the chapter start time.
+ * Half a pixel means that only the pixel that contains the marker snaps,
+ * so the timestamps next to a boundary stay reachable too.
+ *
+ * @const {number}
+ * @private
+ */
+shaka.ui.SeekBar.CHAPTER_SNAP_DISTANCE_PX_ = 0.5;
 
 
 /**
