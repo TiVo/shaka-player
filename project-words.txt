@@ -76,6 +76,8 @@ seekbackward
 seekforward
 seekto
 seekrangechanged
+scrubstarted
+scrubstopped
 segmentappended
 selectcomplete
 showingui
@@ -97,7 +99,12 @@ timelineregionadded
 timelineregionenter
 timelineregionexit
 trackschanged
+trickframerendered
+renderable
 trickplay
+trickplayratechanged
+trickplaystarted
+trickplaystopped
 uilang
 uiupdated
 unlisten
@@ -388,6 +395,7 @@ qpprime
 radl
 rbsp
 regionanchor
+resynced
 rltb
 samplerate
 saio
