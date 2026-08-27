@@ -284,6 +284,9 @@ describe('SimpleAbrManager (integration)', () => {
       disableStream: () => false,
       shouldPrefetchNextSegment: () => true,
       getKeySystem: () => '',
+      isSeekBasedTrickPlayActive: () => false,
+      getTrickPlayDirection: () => 'none',
+      shouldDownloadAudioDuringTrickPlay: () => false,
     });
     streamingEngine.configure(streamingConfig);
 
