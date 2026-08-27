@@ -1,0 +1,80 @@
+name: Player Release
+
+on:
+  push:
+    tags:
+      - 'tivo-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. 5.1.0). Required for manual runs.'
+        required: true
+      dry_run:
+        description: 'Dry run — build only, skip release creation'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: runner-default-ubuntu-24.04
+    steps:
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            # Tag push: extract version from tag (e.g. tivo-v5.1.0 → 5.1.0)
+            TAG_NAME="${GITHUB_REF_NAME}"
+            VERSION="${TAG_NAME#tivo-v}"
+          else
+            # Manual trigger: use input
+            VERSION="${{ inputs.version }}"
+          fi
+          TIMESTAMP=$(date +%s)
+          RELEASE_TAG="v${VERSION}-alpha.tivo.${TIMESTAMP}"
+          RELEASE_TITLE="Inception ${TIMESTAMP}"
+          echo "VERSION=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_TAG=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "RELEASE_TITLE=${RELEASE_TITLE}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 21
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: python3 build/all.py --force
+
+      - name: Package dist artifacts
+        run: tar -czf shaka-player-dist.tgz dist/
+
+      - name: Create npm tarball
+        run: npm pack --ignore-scripts
+
+      - name: Create GitHub Release
+        if: ${{ inputs.dry_run != true }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          NPM_TARBALL=$(ls shaka-player-[0-9]*.tgz)
+          gh release create "${{ steps.version.outputs.RELEASE_TAG }}" \
+            shaka-player-dist.tgz \
+            "$NPM_TARBALL" \
+            --target "${{ github.sha }}" \
+            --title "${{ steps.version.outputs.RELEASE_TITLE }}" \
+            --generate-notes
