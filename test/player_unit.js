@@ -245,6 +245,32 @@ describe('Player', () => {
       }
     });
 
+    // Regression test: shaka.util.Mutex.acquire() has no timeout and no abort,
+    // so an operation that wedges below the JS layer holds the mutex forever.
+    // destroy() used to queue behind it through detach(), leaving the returned
+    // promise pending with no resolution and no rejection.
+    it('completes when another operation is wedged holding the mutex',
+        async () => {
+          const wedgedParser = new shaka.test.FakeManifestParser(manifest);
+          // Never settles, so load() holds the mutex indefinitely.
+          wedgedParser.start.and.returnValue(new Promise(() => {}));
+          shaka.media.ManifestParser.registerParserByMime(
+              fakeMimeType, () => wedgedParser);
+
+          const loadPromise = player.load(fakeManifestUri, 0, fakeMimeType);
+          // The abandoned load rejects once the player is torn down.
+          loadPromise.catch(() => {});
+
+          // Let load() acquire the mutex and reach the wedged parser.
+          await shaka.test.Util.shortDelay();
+
+          const outcome = await Promise.race([
+            player.destroy().then(() => 'destroyed'),
+            shaka.test.Util.delay(5).then(() => 'timed out'),
+          ]);
+          expect(outcome).toBe('destroyed');
+        });
+
     it('destroys drmEngine before mediaSourceEngine with webkit polyfill',
         async () => {
           spyOn(shaka.drm.DrmUtils, 'isMediaKeysPolyfilled')
@@ -565,6 +591,27 @@ describe('Player', () => {
         expect(updatedVariants.length).toBe(variantCount);
         expect(forceSwitch).toBeFalsy();
         expect(fromAdaptation).toBeFalsy();
+      });
+
+      /** @suppress {accessControls} */
+      function clearAbrManager() {
+        player.abrManager_ = null;
+      }
+
+      it('does nothing when the AbrManager does not exist yet', async () => {
+        multiVariantManifest();
+
+        await player.load(fakeManifestUri, 0, fakeMimeType);
+
+        const variant = manifest.variants[0];
+        const videoStream = /** @type {shaka.extern.Stream} */ (variant.video);
+
+        // The parser can ask to disable a stream during load(), before the
+        // AbrManager has been created.
+        clearAbrManager();
+
+        expect(player.disableStream(videoStream, disableTimeInSeconds))
+            .toBe(false);
       });
 
       describe('does not disable stream if there not alternate stream', () => {
@@ -3191,6 +3238,35 @@ describe('Player', () => {
       }));
     });
 
+    it('chooses the first available configured text language at start',
+        async () => {
+          player.configure({
+            preferredText: [
+              {
+                language: 'fi',
+                role: '',
+                format: '',
+                forced: false,
+              },
+              {
+                language: 'en',
+                role: 'commentary',
+                format: '',
+                forced: false,
+              },
+            ],
+          });
+
+          await player.load(fakeManifestUri, 0, fakeMimeType);
+
+          // The first preference is not available, so the second one is used.
+          expect(getActiveTextTrack()).toEqual(jasmine.objectContaining({
+            id: 52,
+            language: 'en',
+            roles: ['commentary'],
+          }));
+        });
+
     it('chooses a variant with preferred audio label', async () => {
       expect(getActiveVariantTrack().label).toBe(null);
 
@@ -3210,6 +3286,68 @@ describe('Player', () => {
       expect(getActiveVariantTrack().label).toBe('es-label');
     });
   });  // describe('tracks')
+
+  describe('HTML5 audio tracks in src= mode', () => {
+    let trackEn1;
+    let trackEn2;
+    let trackEs;
+
+    beforeEach(() => {
+      trackEn1 = {
+        id: '',
+        label: 'Stereo',
+        language: 'en',
+        kind: 'main',
+        enabled: true,
+      };
+      trackEn2 = {
+        id: '',
+        label: 'Surround 5.1',
+        language: 'en',
+        kind: 'main',
+        enabled: false,
+      };
+      trackEs = {
+        id: '',
+        label: 'Spanish',
+        language: 'es',
+        kind: 'main',
+        enabled: false,
+      };
+      video.audioTracks = /** @type {?} */ ([trackEn1, trackEn2, trackEs]);
+    });
+
+    it('getAudioTracks assigns unique id and matches native tracks', () => {
+      const tracks = player.getAudioTracks();
+      expect(tracks.length).toBe(3);
+      expect(tracks[0].id).toBeDefined();
+      expect(tracks[1].id).toBeDefined();
+      expect(tracks[0].id).not.toBe(tracks[1].id);
+      expect(tracks[0].active).toBe(true);
+      expect(tracks[1].active).toBe(false);
+    });
+
+    it('selectAudioTrack disables other tracks when id is empty string', () => {
+      const tracks = player.getAudioTracks();
+      expect(trackEn1.enabled).toBe(true);
+      expect(trackEs.enabled).toBe(false);
+
+      player.selectAudioTrack(tracks[2]);
+
+      expect(trackEs.enabled).toBe(true);
+      expect(trackEn1.enabled).toBe(false);
+      expect(trackEn2.enabled).toBe(false);
+    });
+
+    it('selectAudioTrack distinguishes tracks with same language by id', () => {
+      const tracks = player.getAudioTracks();
+      player.selectAudioTrack(tracks[1]);
+
+      expect(trackEn2.enabled).toBe(true);
+      expect(trackEn1.enabled).toBe(false);
+      expect(trackEs.enabled).toBe(false);
+    });
+  });
 
   describe('languages', () => {
     it('chooses the first as default', async () => {

@@ -168,7 +168,9 @@ shakaDemo.Config = class {
         .addNumberInput_('Renewal Interval (sec)',
             'drm.renewalIntervalSec',
             /* canBeDecimal= */ false,
-            /* canBeZero= */ true);
+            /* canBeZero= */ true)
+        .addArrayStringInput_('preferredKeySystems',
+            'drm.preferredKeySystems');
     const advanced = shakaDemoMain.getConfiguration().drm.advanced || {};
     const addDRMAdvancedField = (name, valueName, suggestions,
         arrayString = false) => {
@@ -687,11 +689,8 @@ shakaDemo.Config = class {
             /* canBeDecimal= */ false,
             /* canBeZero= */ true,
             /* canBeUnset= */ true)
-        .addCustomTextInput_('Prefetch audio languages', (input) => {
-          shakaDemoMain.configure(
-              'streaming.prefetchAudioLanguages',
-              input.value.split(',').filter(Boolean));
-        })
+        .addArrayStringInput_('Prefetch audio languages',
+            'streaming.prefetchAudioLanguages')
         .addBoolInput_('Disable Audio Prefetch',
             'streaming.disableAudioPrefetch')
         .addBoolInput_('Disable Text Prefetch',

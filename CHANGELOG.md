@@ -1,5 +1,74 @@
 # Changelog
 
+## [5.2.12](https://github.com/shaka-project/shaka-player/compare/v5.2.11...v5.2.12) (2026-09-25)
+
+
+### Bug Fixes
+
+* **CEA:** Honor CEA-708 caption pen opacity ([#10621](https://github.com/shaka-project/shaka-player/issues/10621)) ([4dc1474](https://github.com/shaka-project/shaka-player/commit/4dc14742250c8f895718d87b2b4a7006238a352d)), closes [#10620](https://github.com/shaka-project/shaka-player/issues/10620)
+* **DASH:** Get the key ID from the init segment when the manifest has none ([#10552](https://github.com/shaka-project/shaka-player/issues/10552)) ([7ee04ec](https://github.com/shaka-project/shaka-player/commit/7ee04ec6490cac7c69614e14bf56ee1ac6ee12eb)), closes [#10390](https://github.com/shaka-project/shaka-player/issues/10390)
+* **DRM:** Ignore session creation during teardown ([#10614](https://github.com/shaka-project/shaka-player/issues/10614)) ([fc396d0](https://github.com/shaka-project/shaka-player/commit/fc396d041640b91201d1f8538417498ab7a8813a))
+* **net:** Avoid dropping low-latency segments when a retried request succeeds ([#10646](https://github.com/shaka-project/shaka-player/issues/10646)) ([d6f939f](https://github.com/shaka-project/shaka-player/commit/d6f939f22f89b65dad2762d393059df67e1a12a1))
+* Prevent destroy() from hanging when playback is wedged ([#10624](https://github.com/shaka-project/shaka-player/issues/10624)) ([5d713d0](https://github.com/shaka-project/shaka-player/commit/5d713d09f755b9b3585acadfd788643416a7ac83)), closes [#10623](https://github.com/shaka-project/shaka-player/issues/10623)
+* **WebVTT:** Parse every fragment of a multi-fragment MP4 segment ([#10642](https://github.com/shaka-project/shaka-player/issues/10642)) ([0d8a677](https://github.com/shaka-project/shaka-player/commit/0d8a677d768335c3e2dbc8e3bfa7b77fce63766a))
+
+## [5.2.11](https://github.com/shaka-project/shaka-player/compare/v5.2.10...v5.2.11) (2026-09-18)
+
+
+### Bug Fixes
+
+* **Ads:** Report the last ad of a pod as complete when using SVTA tracking ([#10576](https://github.com/shaka-project/shaka-player/issues/10576)) ([5c23a03](https://github.com/shaka-project/shaka-player/commit/5c23a0399b21f1d4d5b80cabf39b1d1653f535cb)), closes [#10545](https://github.com/shaka-project/shaka-player/issues/10545)
+* **Demo:** Avoid requesting missing UI locales repeatedly ([#10610](https://github.com/shaka-project/shaka-player/issues/10610)) ([959c271](https://github.com/shaka-project/shaka-player/commit/959c271b00e7dba86b9756a86659a61f2cd09236))
+* enforce paused state when seeking from ended state ([#10579](https://github.com/shaka-project/shaka-player/issues/10579)) ([6389f43](https://github.com/shaka-project/shaka-player/commit/6389f4332cee51c59c365263de2d4bc2b23ac210)), closes [#10410](https://github.com/shaka-project/shaka-player/issues/10410)
+* **HLS:** Add missing AV2 video codec detection ([#10594](https://github.com/shaka-project/shaka-player/issues/10594)) ([612b093](https://github.com/shaka-project/shaka-player/commit/612b09347069c483bfe2d957000891e0a784239c))
+* **HLS:** Avoid TypeError when a media playlist fails during load() ([#10560](https://github.com/shaka-project/shaka-player/issues/10560)) ([0e3f38f](https://github.com/shaka-project/shaka-player/commit/0e3f38f267c30a07c6551bc1aeecb0174412ed9f))
+* Keep captions working when periods disagree on caption vs subtitle ([#10600](https://github.com/shaka-project/shaka-player/issues/10600)) ([1af2c7e](https://github.com/shaka-project/shaka-player/commit/1af2c7ebf36e449c2a4fe48387074da7399203e3)), closes [#10599](https://github.com/shaka-project/shaka-player/issues/10599)
+* **TTML:** Clip each sample of a multi-sample stpp segment to its own time ([#10602](https://github.com/shaka-project/shaka-player/issues/10602)) ([6588698](https://github.com/shaka-project/shaka-player/commit/658869857b928e953df34d399c4ee9f663454f3b)), closes [#10597](https://github.com/shaka-project/shaka-player/issues/10597)
+
+## [5.2.10](https://github.com/shaka-project/shaka-player/compare/v5.2.9...v5.2.10) (2026-09-11)
+
+
+### Bug Fixes
+
+* **Ads:** Do not report a resume for an ad's first playout ([#10566](https://github.com/shaka-project/shaka-player/issues/10566)) ([c217ec3](https://github.com/shaka-project/shaka-player/commit/c217ec32b67323cb0b3fb9a091f0f0e4aabcc9dc)), closes [#10562](https://github.com/shaka-project/shaka-player/issues/10562)
+* **Ads:** Report the last ad of a pod as complete ([#10546](https://github.com/shaka-project/shaka-player/issues/10546)) ([9742fc3](https://github.com/shaka-project/shaka-player/commit/9742fc34ffe8ceae3db05d8259ab96e6f7a48736)), closes [#10545](https://github.com/shaka-project/shaka-player/issues/10545)
+* **Demo:** Persist array config values in the URL hash ([#10539](https://github.com/shaka-project/shaka-player/issues/10539)) ([4fb25e2](https://github.com/shaka-project/shaka-player/commit/4fb25e2fb8424c29f555461f52e7e7af24852e57))
+* Don't fall back to another role when the preferred text role is unmatched ([#10549](https://github.com/shaka-project/shaka-player/issues/10549)) ([c44678d](https://github.com/shaka-project/shaka-player/commit/c44678dcc6c4c557d465851312c49260d96e1f5f)), closes [#9993](https://github.com/shaka-project/shaka-player/issues/9993)
+* **HLS:** Support legacy X-CUE for interstitials ([#10558](https://github.com/shaka-project/shaka-player/issues/10558)) ([a968cf5](https://github.com/shaka-project/shaka-player/commit/a968cf5dac2d47b27b83136469c19251cdc576b9))
+* **HLS:** synchronize HTML5 audio track selection in src= mode (fixes [#10551](https://github.com/shaka-project/shaka-player/issues/10551)) ([#10568](https://github.com/shaka-project/shaka-player/issues/10568)) ([139d6b1](https://github.com/shaka-project/shaka-player/commit/139d6b1a0b9f54d644dd5cf1184054f5bc0eac9b))
+* **Mp4Parser:** Don't hang on a 64-bit largesize of 0 ([#10548](https://github.com/shaka-project/shaka-player/issues/10548)) ([79b6129](https://github.com/shaka-project/shaka-player/commit/79b6129e29782bf0499caac3cddacc040de4b1c7)), closes [#10542](https://github.com/shaka-project/shaka-player/issues/10542)
+* Prevent infinite loop on zero-length WVTT payload box ([#10565](https://github.com/shaka-project/shaka-player/issues/10565)) ([af1b276](https://github.com/shaka-project/shaka-player/commit/af1b276eb1b2d2d500315a376c74f98e2ec5bbd4)), closes [#10561](https://github.com/shaka-project/shaka-player/issues/10561)
+* Try every preferredText entry when choosing the text track ([#10547](https://github.com/shaka-project/shaka-player/issues/10547)) ([6c4695c](https://github.com/shaka-project/shaka-player/commit/6c4695c41403dda1a353fdb24af62122194c0841)), closes [#10544](https://github.com/shaka-project/shaka-player/issues/10544)
+
+## [5.2.9](https://github.com/shaka-project/shaka-player/compare/v5.2.8...v5.2.9) (2026-09-04)
+
+
+### Bug Fixes
+
+* **Ads:** Don't drop SVTA signaling of preloaded assets ([#10520](https://github.com/shaka-project/shaka-player/issues/10520)) ([0659769](https://github.com/shaka-project/shaka-player/commit/06597698f37947937705461c52af0b2ec59406ce))
+* **Ads:** Report an ad that reaches its playout limit as complete ([#10521](https://github.com/shaka-project/shaka-player/issues/10521)) ([9422a89](https://github.com/shaka-project/shaka-player/commit/9422a89630abbf0970fffbf673262565700677b4))
+* **device:** Ban changeType on Opera for macOS ([#10514](https://github.com/shaka-project/shaka-player/issues/10514)) ([be3ec24](https://github.com/shaka-project/shaka-player/commit/be3ec242dd553a796cb2fbb9c014bdc67556dfd4))
+* **offline:** Avoid DRM license removal failure ([#10510](https://github.com/shaka-project/shaka-player/issues/10510)) ([3578859](https://github.com/shaka-project/shaka-player/commit/3578859c1d06283b821d08a221d35225846c9811))
+* **offline:** Avoid orphaned DRM sessions on removal failure ([#10511](https://github.com/shaka-project/shaka-player/issues/10511)) ([1ed2672](https://github.com/shaka-project/shaka-player/commit/1ed2672b7b1a533d805611f823e89887a91055ef))
+* Parse closed captions after transmuxing ([#10499](https://github.com/shaka-project/shaka-player/issues/10499)) ([098a559](https://github.com/shaka-project/shaka-player/commit/098a559218561cc65dfb3d8e3ab6d926925d6738))
+* Prevent run-ahead throttling from starving frame-sized segments ([#10496](https://github.com/shaka-project/shaka-player/issues/10496)) ([d248462](https://github.com/shaka-project/shaka-player/commit/d248462e36a2c560d3aa2bd60601bde87d2db33b))
+* Reduce unnecessary error calls ([#10501](https://github.com/shaka-project/shaka-player/issues/10501)) ([8a29e0d](https://github.com/shaka-project/shaka-player/commit/8a29e0dbacd503df83e457da36980fd32717b766))
+* Release XHR handlers once the request is done ([#10506](https://github.com/shaka-project/shaka-player/issues/10506)) ([36617a7](https://github.com/shaka-project/shaka-player/commit/36617a7a5338abd670bb06c1bb558c8439d3e544))
+* **Transmuxer:** Fix infinite loop and dropped frames in MPEG audio ([#10529](https://github.com/shaka-project/shaka-player/issues/10529)) ([a0a4c64](https://github.com/shaka-project/shaka-player/commit/a0a4c646e4ba7cd9a49600465c85326e288efcd2))
+
+## [5.2.8](https://github.com/shaka-project/shaka-player/compare/v5.2.7...v5.2.8) (2026-08-28)
+
+
+### Bug Fixes
+
+* Add support for embedded closed captions and improve timestamp rollover handling in HLS and VTT parsers ([#10425](https://github.com/shaka-project/shaka-player/issues/10425)) ([1867254](https://github.com/shaka-project/shaka-player/commit/186725406b6a23d808a9f19d79142207f0073136))
+* **Ads:** Send ad tracking events via GET ([#10469](https://github.com/shaka-project/shaka-player/issues/10469)) ([690d759](https://github.com/shaka-project/shaka-player/commit/690d75937859c1dda686b987feabfcfad6905443))
+* **DASH:** Live to VOD transition with multi period start not at 0 ([#10480](https://github.com/shaka-project/shaka-player/issues/10480)) ([e55f892](https://github.com/shaka-project/shaka-player/commit/e55f89288ccd159a224a45e1828b80cc4f29ca22))
+* Prevent long buffering on seeks after period transitions ([#10484](https://github.com/shaka-project/shaka-player/issues/10484)) ([ca837ec](https://github.com/shaka-project/shaka-player/commit/ca837eccfe44d222137ac0410d2651199f8d7763))
+* **Transmux:** Support audio-only MPEG-TS renditions labeled 'labeled 'audio/mp2t' ([#10473](https://github.com/shaka-project/shaka-player/issues/10473)) ([4253dd1](https://github.com/shaka-project/shaka-player/commit/4253dd1aa9e80ac0d7b3a98304634073dc321fe4))
+* **TS:** Fix slice_type parsing in multi-slice H.264 frames ([#10477](https://github.com/shaka-project/shaka-player/issues/10477)) ([2cea4bf](https://github.com/shaka-project/shaka-player/commit/2cea4bf5f47cb252f77ab5286b77cef3cea48e32)), closes [#10468](https://github.com/shaka-project/shaka-player/issues/10468)
+* **UI:** Include end boundary when matching last chapter ([#10475](https://github.com/shaka-project/shaka-player/issues/10475)) ([650ac3a](https://github.com/shaka-project/shaka-player/commit/650ac3a6126792baab5689033b0b4b486e043d94))
+
 ## [5.2.7](https://github.com/shaka-project/shaka-player/compare/v5.2.6...v5.2.7) (2026-08-21)
 
 

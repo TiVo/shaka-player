@@ -2018,6 +2018,48 @@ describe('DrmEngine', () => {
   });  // describe('update')
 
   describe('destroy', () => {
+    it('ignores session creation throughout teardown', async () => {
+      await initAndAttach();
+      await sendEncryptedEvent();
+
+      const closing = Promise.withResolvers();
+      const detaching = Promise.withResolvers();
+      const detachStarted = Promise.withResolvers();
+      session1.close.and.returnValue(closing.promise);
+      mockVideo.setMediaKeys.and.callFake(() => {
+        detachStarted.resolve();
+        return detaching.promise;
+      });
+      mockMediaKeys.createSession.calls.reset();
+
+      const checkSessionCreation = () => {
+        const initData = new Uint8Array([1, 2, 3]);
+        expect(() => drmEngine.newInitData('cenc', initData)).not.toThrow();
+        expect(drmEngine.createSession('cenc', initData, 'temporary'))
+            .toBeNull();
+        expect(mockMediaKeys.createSession).not.toHaveBeenCalled();
+      };
+
+      const destroying = drmEngine.destroy();
+      try {
+        // MediaKeys still exist while the event manager has been released.
+        expect(session1.close).toHaveBeenCalled();
+        expect(drmEngine.getMediaKeys()).toBe(mockMediaKeys);
+        checkSessionCreation();
+
+        closing.resolve();
+        await detachStarted.promise;
+        expect(drmEngine.getMediaKeys()).toBe(mockMediaKeys);
+        checkSessionCreation();
+      } finally {
+        closing.resolve();
+        detaching.resolve();
+        await destroying;
+      }
+
+      checkSessionCreation();
+    });
+
     it('tears down MediaKeys and active sessions', async () => {
       await initAndAttach();
 
@@ -2622,6 +2664,23 @@ describe('DrmEngine', () => {
           shaka.util.Error.Code.LICENSE_RESPONSE_REJECTED, 'Error'));
       await expectAsync(drmEngine.removeSession('abc'))
           .toBeRejectedWith(expected);
+    });
+
+    it('is rejected when the session cannot be loaded', async () => {
+      // A CDM can refuse to load a persistent session, as one does when it was
+      // persisted under different robustness levels.  Reporting success would
+      // let the caller drop its record of a session the CDM still holds.
+      session1.load.and.returnValue(
+          Promise.reject(new Error('Operation aborted')));
+      onErrorSpy.and.stub();
+
+      const expected = Util.jasmineError(new shaka.util.Error(
+          shaka.util.Error.Severity.CRITICAL, shaka.util.Error.Category.DRM,
+          shaka.util.Error.Code.FAILED_TO_CREATE_SESSION,
+          'Failed to load session for removal: abc'));
+      await expectAsync(drmEngine.removeSession('abc'))
+          .toBeRejectedWith(expected);
+      expect(session1.remove).not.toHaveBeenCalled();
     });
 
     // Regression test for #3534
